@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIP CAFE</title>
+    <script>
+      // GitHub Pages SPA router redirect:
+      // If a user navigates to a subroute or misses a trailing slash, redirect back to the app root cleanly
+      (function () {
+        var path = window.location.pathname;
+        var segments = path.split('/').filter(Boolean);
+        // If deployed to a repo subpath like /sip-cafe/, keep the repo segment
+        if (segments.length > 0) {
+          var repo = '/' + segments[0] + '/';
+          window.location.replace(repo + window.location.search + window.location.hash);
+        } else {
+          window.location.replace('/' + window.location.search + window.location.hash);
+        }
+      })();
+    </script>
+  </head>
+  <body style="background-color: #FAF7F2; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #1C1917;">
+    <div style="text-align: center;">
+      <h1 style="font-size: 24px; margin-bottom: 8px;">SIP CAFE</h1>
+      <p style="font-size: 14px; color: #666;">Loading menu...</p>
+    </div>
+  </body>
+</html>
