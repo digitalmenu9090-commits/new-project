@@ -102,7 +102,10 @@ export default function App() {
       {/* Main Flow (Strict Natural Sequence Without White Gaps) */}
       <main className="flex-1">
         {/* 1. HERO */}
-        <Hero settings={settings} />
+        <Hero
+          settings={settings}
+          onUpdateHeroImage={(newUrl) => setSettings((prev) => ({ ...prev, hero_image: newUrl }))}
+        />
 
         {/* 2. FEATURED CATEGORIES */}
         <FeaturedCategories

@@ -86,23 +86,31 @@ export const LocationSection: React.FC<LocationSectionProps> = ({ settings }) =>
               </div>
 
               {/* Action button */}
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-wrap gap-3">
                 <a
                   href={settings.maps_url || 'https://maps.google.com/?q=Pipalbot,+Kathmandu,+Nepal'}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] text-xs font-semibold uppercase tracking-wider transition-all shadow-md"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] text-xs font-semibold uppercase tracking-wider transition-all shadow-md"
                 >
                   <Navigation className="w-4 h-4 text-[#C89D5C]" />
-                  <span>Open in Google Maps</span>
+                  <span>Google Maps</span>
                 </a>
 
                 <a
                   href={`tel:${settings.phone}`}
-                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white hover:bg-[#FAF7F2] border border-[#D9CEBE] text-[#2A1810] text-xs font-semibold uppercase tracking-wider transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white hover:bg-[#FAF7F2] border border-[#D9CEBE] text-[#2A1810] text-xs font-semibold uppercase tracking-wider transition-all"
                 >
-                  <Phone className="w-4 h-4 text-[#C89D5C]" />
+                  <Phone className="w-3.5 h-3.5 text-[#C89D5C]" />
                   <span>Call {settings.phone}</span>
+                </a>
+
+                <a
+                  href={`tel:${settings.secondary_phone || '9813779214'}`}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white hover:bg-[#FAF7F2] border border-[#D9CEBE] text-[#2A1810] text-xs font-semibold uppercase tracking-wider transition-all"
+                >
+                  <Phone className="w-3.5 h-3.5 text-[#C89D5C]" />
+                  <span>Call {settings.secondary_phone || '9813779214'}</span>
                 </a>
               </div>
             </motion.div>

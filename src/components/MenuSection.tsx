@@ -21,7 +21,6 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [dietaryFilter, setDietaryFilter] = useState<'all' | 'veg' | 'non-veg' | 'beverage'>('all');
   const [activeModalItem, setActiveModalItem] = useState<MenuItem | null>(null);
-  const [showMenuBoardModal, setShowMenuBoardModal] = useState(false);
 
   // Filter items by category, dietary preference, and search query
   const filteredItems = useMemo(() => {
@@ -70,17 +69,6 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
           <p className="text-[#57534E] text-base sm:text-lg font-light italic">
             "Chilled Himalayan brews, handcrafted iced lattes, and refreshing cold coffee specialties."
           </p>
-
-          {/* Quick Action: View Original Menu Board */}
-          <div className="mt-5 flex items-center justify-center gap-3">
-            <button
-              onClick={() => setShowMenuBoardModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white hover:bg-[#FAF7F2] text-[#2A1810] border border-[#C89D5C] text-xs font-semibold shadow-sm hover:shadow transition-all"
-            >
-              <Eye className="w-3.5 h-3.5 text-[#C89D5C]" />
-              <span>View Authentic Chalkboard Menu Board</span>
-            </button>
-          </div>
         </div>
 
         {/* Search & Dietary Filters Bar */}
@@ -378,58 +366,6 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
                     Call Cafe
                   </a>
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Authentic Chalkboard Menu Board Lightbox */}
-      <AnimatePresence>
-        {showMenuBoardModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#1C140E] text-[#FAF7F2] rounded-3xl max-w-5xl w-full max-h-[92vh] overflow-hidden shadow-2xl border border-[#C89D5C]/40 flex flex-col relative"
-            >
-              {/* Header */}
-              <div className="p-4 sm:p-5 border-b border-[#3D2314] flex items-center justify-between bg-[#140D08]">
-                <div>
-                  <h3 className="text-lg sm:text-xl font-serif font-bold text-[#C89D5C]">
-                    SIPCAFE Official Menu Board
-                  </h3>
-                  <p className="text-xs text-stone-400">
-                    Brewed in the Himalayas, Made for You · Pipalbot (people boat), Kathmandu, Nepal
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowMenuBoardModal(false)}
-                  className="w-9 h-9 rounded-full bg-[#2A1810] text-[#FAF7F2] hover:text-[#C89D5C] flex items-center justify-center transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Menu Board Image */}
-              <div className="p-4 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-[#0F0A06]">
-                <img
-                  src="./sip_cafe_menu_board.jpg"
-                  alt="SIPCAFE Original Chalkboard Menu Board"
-                  className="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl border border-[#C89D5C]/20"
-                />
-              </div>
-
-              {/* Footer info */}
-              <div className="p-4 bg-[#140D08] border-t border-[#3D2314] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-300">
-                <span>Free WiFi · Locally Sourced · Instagram: @sipcafe.jp</span>
-                <a
-                  href={`tel:${whatsappNumber}`}
-                  className="px-4 py-1.5 rounded-full bg-[#C89D5C] hover:bg-[#b58c4f] text-[#1C140E] font-semibold text-xs transition-colors"
-                >
-                  Call: {whatsappNumber}
-                </a>
               </div>
             </motion.div>
           </div>

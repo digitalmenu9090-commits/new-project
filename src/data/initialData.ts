@@ -79,6 +79,7 @@ export const INITIAL_CAFE_SETTINGS: CafeSettings = {
   cafe_name: 'SIP CAFE',
   address: 'Pipalbot (people boat), Kathmandu, Nepal',
   phone: '9767560484',
+  secondary_phone: '9813779214',
   whatsapp: '9767560484',
   instagram: 'https://instagram.com/sipcafe.jp',
   facebook: 'https://facebook.com/sipcafe',
@@ -88,24 +89,31 @@ export const INITIAL_CAFE_SETTINGS: CafeSettings = {
   opening_days: 'Every Day',
   about_text: 'Sip Cafe is your cozy neighborhood sanctuary in Pipalbot, Kathmandu — created for people who appreciate handcrafted cold brews, authentic Himalayan specialty coffee, and refreshing moments with friends. Every drink is prepared fresh to order with pure mountain spring water and locally roasted beans.',
   hero_title: 'SIP CAFE',
-  hero_subtitle: 'COLD COFFEE • HANDCRAFTED BREWS • GOOD VIBES',
-  hero_description: 'Brewed in the Himalayas, Made for You. Delicious cold coffees, refreshing iced drinks, and relaxed moments in Pipalbot, Kathmandu.',
-  hero_image: './sip_cafe_storefront.jpg'
+  hero_subtitle: 'GOOD FOOD • GREAT COFFEE • BETTER VIBES',
+  hero_description: 'Welcome to Sip Cafe at Pipalbot, Kathmandu! Enjoy handcrafted specialty coffee, refreshing drinks, burgers, momo, and delicious food on our relaxing outdoor terrace.',
+  hero_image: './sip_cafe_real_original.jpg'
 };
 
 export const INITIAL_GALLERY: GalleryItem[] = [
   {
-    id: 'g-storefront',
-    title: 'Our Kathmandu Storefront at Pipalbot',
+    id: 'g-storefront-real',
+    title: 'Sip Café Outdoor Terrace & Storefront • Pipalbot, Kathmandu',
     category: 'Storefront',
-    image_url: './sip_cafe_storefront.jpg',
+    image_url: './sip_cafe_real_original.jpg',
     aspect: 'wide'
   },
   {
-    id: 'g-menuboard',
-    title: 'The Official Sip Cafe Himalayan Menu Board',
-    category: 'Menu Board',
-    image_url: './sip_cafe_menu_board.jpg',
+    id: 'g-terrace',
+    title: 'Warm Outdoor Cafe Terrace & Sunlit Seating',
+    category: 'Atmosphere',
+    image_url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80',
+    aspect: 'wide'
+  },
+  {
+    id: 'g-barista',
+    title: 'Freshly Brewed Specialty Espresso & Pour-Over',
+    category: 'Coffee Bar',
+    image_url: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80',
     aspect: 'wide'
   },
   {

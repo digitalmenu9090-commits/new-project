@@ -109,15 +109,27 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('File size exceeds 2MB limit. Please choose a smaller image or use an image URL.');
+    if (file.size > 15 * 1024 * 1024) {
+      showNotification('File size exceeds 15MB. Please choose a smaller photo.');
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       if (typeof reader.result === 'string') {
-        callback(reader.result);
+        const base64 = reader.result;
+        callback(base64);
+
+        // Also push to /api/upload to save directly to disk
+        try {
+          await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64 })
+          });
+        } catch {
+          // Ignore offline errors
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -879,13 +891,27 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                     <div>
                       <label className="block text-xs font-semibold text-[#2A1810] uppercase mb-1">
-                        Phone Number
+                        Primary Phone Number
                       </label>
                       <input
                         type="text"
                         value={settings.phone}
                         onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
                         className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl"
+                        placeholder="9767560484"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#2A1810] uppercase mb-1">
+                        Additional / Secondary Phone Number
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.secondary_phone || ''}
+                        onChange={(e) => setSettings({ ...settings, secondary_phone: e.target.value })}
+                        className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl"
+                        placeholder="9813779214"
                       />
                     </div>
 

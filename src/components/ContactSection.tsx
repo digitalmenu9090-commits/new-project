@@ -30,42 +30,76 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ settings }) => {
           </p>
 
           {/* Primary Big Contacts Display */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 mb-12">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8 mb-12 flex-wrap">
+            {/* Phone 1 */}
             <a
               href={`tel:${settings.phone}`}
-              className="flex items-center gap-3 text-xl sm:text-2xl font-serif font-bold text-[#2A1810] hover:text-[#C89D5C] transition-colors"
+              className="flex items-center gap-3 text-lg sm:text-xl font-serif font-bold text-[#2A1810] hover:text-[#C89D5C] transition-colors p-3 rounded-2xl hover:bg-white/60 border border-transparent hover:border-[#D9CEBE]"
             >
-              <div className="w-12 h-12 rounded-full bg-[#FAF7F2] border border-[#C89D5C] flex items-center justify-center text-[#C89D5C] shadow-sm">
+              <div className="w-12 h-12 rounded-full bg-white border border-[#C89D5C] flex items-center justify-center text-[#C89D5C] shadow-xs shrink-0">
                 <Phone className="w-5 h-5" />
               </div>
-              <span>{settings.phone}</span>
+              <div className="text-left">
+                <div className="text-[10px] text-[#78716C] uppercase font-sans tracking-wider">Primary Phone</div>
+                <span>{settings.phone}</span>
+              </div>
             </a>
 
-            <div className="hidden sm:block w-[1px] h-8 bg-[#D9CEBE]" />
+            <div className="hidden md:block w-[1px] h-8 bg-[#D9CEBE]" />
 
+            {/* Phone 2 */}
+            <a
+              href={`tel:${settings.secondary_phone || '9813779214'}`}
+              className="flex items-center gap-3 text-lg sm:text-xl font-serif font-bold text-[#2A1810] hover:text-[#C89D5C] transition-colors p-3 rounded-2xl hover:bg-white/60 border border-transparent hover:border-[#D9CEBE]"
+            >
+              <div className="w-12 h-12 rounded-full bg-white border border-[#C89D5C] flex items-center justify-center text-[#C89D5C] shadow-xs shrink-0">
+                <Phone className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <div className="text-[10px] text-[#78716C] uppercase font-sans tracking-wider">Additional Line</div>
+                <span>{settings.secondary_phone || '9813779214'}</span>
+              </div>
+            </a>
+
+            <div className="hidden md:block w-[1px] h-8 bg-[#D9CEBE]" />
+
+            {/* WhatsApp */}
             <a
               href={`https://wa.me/977${settings.whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 text-xl sm:text-2xl font-serif font-bold text-[#2A1810] hover:text-emerald-600 transition-colors"
+              className="flex items-center gap-3 text-lg sm:text-xl font-serif font-bold text-[#2A1810] hover:text-emerald-600 transition-colors p-3 rounded-2xl hover:bg-white/60 border border-transparent hover:border-[#D9CEBE]"
             >
-              <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-500/40 flex items-center justify-center text-emerald-600 shadow-sm">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-500/40 flex items-center justify-center text-emerald-600 shadow-xs shrink-0">
                 <MessageCircle className="w-5 h-5" />
               </div>
-              <span>WhatsApp Chat</span>
+              <div className="text-left">
+                <div className="text-[10px] text-[#78716C] uppercase font-sans tracking-wider">Instant Chat</div>
+                <span>WhatsApp ({settings.whatsapp})</span>
+              </div>
             </a>
           </div>
 
           {/* Buttons Matrix */}
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-            {/* CALL US */}
+            {/* CALL LINE 1 */}
             <a
               href={`tel:${settings.phone}`}
-              id="contact-call-btn"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] font-semibold text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg"
+              id="contact-call-btn-1"
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] font-semibold text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg"
             >
               <Phone className="w-4 h-4 text-[#C89D5C]" />
-              <span>CALL US</span>
+              <span>CALL {settings.phone}</span>
+            </a>
+
+            {/* CALL LINE 2 */}
+            <a
+              href={`tel:${settings.secondary_phone || '9813779214'}`}
+              id="contact-call-btn-2"
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#FAF7F2] hover:bg-white border border-[#C89D5C] text-[#2A1810] font-semibold text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg"
+            >
+              <Phone className="w-4 h-4 text-[#C89D5C]" />
+              <span>CALL {settings.secondary_phone || '9813779214'}</span>
             </a>
 
             {/* WHATSAPP */}
@@ -74,7 +108,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ settings }) => {
               target="_blank"
               rel="noopener noreferrer"
               id="contact-whatsapp-btn"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg"
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-semibold text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg"
             >
               <MessageCircle className="w-4 h-4" />
               <span>WHATSAPP</span>

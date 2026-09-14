@@ -116,6 +116,13 @@ export const Footer: React.FC<FooterProps> = ({ settings, onOpenAdmin }) => {
                 <span>+977 {settings.phone}</span>
               </a>
               <a
+                href={`tel:${settings.secondary_phone || '9813779214'}`}
+                className="flex items-center gap-2 hover:text-[#C89D5C] transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5 text-[#C89D5C]" />
+                <span>+977 {settings.secondary_phone || '9813779214'}</span>
+              </a>
+              <a
                 href={`https://wa.me/977${settings.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"

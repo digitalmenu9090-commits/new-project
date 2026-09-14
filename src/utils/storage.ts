@@ -2,10 +2,10 @@ import { MenuItem, Category, CafeSettings, GalleryItem } from '../types';
 import { INITIAL_CATEGORIES, INITIAL_MENU_ITEMS, INITIAL_CAFE_SETTINGS, INITIAL_GALLERY } from '../data/initialData';
 
 const STORAGE_KEYS = {
-  MENU_ITEMS: 'sip_cafe_cold_coffee_items_v8',
-  CATEGORIES: 'sip_cafe_cold_coffee_categories_v8',
-  SETTINGS: 'sip_cafe_cold_coffee_settings_v8',
-  GALLERY: 'sip_cafe_cold_coffee_gallery_v8',
+  MENU_ITEMS: 'sip_cafe_cold_coffee_items_v12',
+  CATEGORIES: 'sip_cafe_cold_coffee_categories_v12',
+  SETTINGS: 'sip_cafe_cold_coffee_settings_v12',
+  GALLERY: 'sip_cafe_cold_coffee_gallery_v12',
   ADMIN_AUTH: 'sip_cafe_admin_auth'
 };
 
@@ -54,7 +54,14 @@ export const saveMenuItems = (items: MenuItem[]): void => {
 export const getStoredCafeSettings = (): CafeSettings => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        ...INITIAL_CAFE_SETTINGS,
+        ...parsed,
+        secondary_phone: parsed.secondary_phone || INITIAL_CAFE_SETTINGS.secondary_phone || '9813779214'
+      };
+    }
   } catch (e) {
     console.error('Error reading settings from storage', e);
   }

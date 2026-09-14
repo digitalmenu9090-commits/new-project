@@ -24,6 +24,7 @@ export interface CafeSettings {
   cafe_name: string;
   address: string;
   phone: string;
+  secondary_phone?: string;
   whatsapp: string;
   instagram: string;
   facebook: string;

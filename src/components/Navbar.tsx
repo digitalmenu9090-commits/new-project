@@ -99,16 +99,28 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin }) => {
             <span>{status.currentStatusText}</span>
           </div>
 
-          {/* Quick Call Button */}
-          <a
-            href={`tel:${settings.phone}`}
+          {/* Quick Call Button(s) */}
+          <div
             id="nav-call-btn"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs uppercase tracking-wider font-semibold border border-[#FAF7F2]/30 hover:border-[#C89D5C] text-[#FAF7F2] hover:text-[#C89D5C] transition-all"
-            title={`Call ${settings.phone}`}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs uppercase tracking-wider font-semibold border border-[#FAF7F2]/30 hover:border-[#C89D5C] text-[#FAF7F2] transition-all bg-[#140E0A]/40 backdrop-blur-xs"
           >
-            <Phone className="w-3 h-3 text-[#C89D5C]" />
-            <span>{settings.phone}</span>
-          </a>
+            <Phone className="w-3 h-3 text-[#C89D5C] shrink-0" />
+            <a
+              href={`tel:${settings.phone}`}
+              title={`Call ${settings.phone}`}
+              className="hover:text-[#C89D5C] transition-colors"
+            >
+              {settings.phone}
+            </a>
+            <span className="text-[#FAF7F2]/40">•</span>
+            <a
+              href={`tel:${settings.secondary_phone || '9813779214'}`}
+              title={`Call ${settings.secondary_phone || '9813779214'}`}
+              className="hover:text-[#C89D5C] transition-colors"
+            >
+              {settings.secondary_phone || '9813779214'}
+            </a>
+          </div>
 
           {/* VIEW MENU Button */}
           <a
@@ -194,13 +206,23 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin }) => {
 
               {/* Mobile CTA Buttons */}
               <div className="pt-2 flex flex-col gap-2.5">
-                <a
-                  href={`tel:${settings.phone}`}
-                  className="w-full py-3 rounded-xl bg-[#C89D5C] text-[#1C140E] font-semibold text-center text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md"
-                >
-                  <Phone className="w-4 h-4" />
-                  <span>Call {settings.phone}</span>
-                </a>
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href={`tel:${settings.phone}`}
+                    className="py-3 rounded-xl bg-[#C89D5C] text-[#1C140E] font-semibold text-center text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>Call {settings.phone}</span>
+                  </a>
+
+                  <a
+                    href={`tel:${settings.secondary_phone || '9813779214'}`}
+                    className="py-3 rounded-xl bg-[#FAF7F2] text-[#1C140E] font-semibold text-center text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-[#C89D5C]" />
+                    <span>Call {settings.secondary_phone || '9813779214'}</span>
+                  </a>
+                </div>
 
                 <a
                   href={`https://wa.me/977${settings.whatsapp}`}

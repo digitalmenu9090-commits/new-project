@@ -39,11 +39,11 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ settings }) => {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.7 }}
-                className="rounded-3xl overflow-hidden shadow-2xl border-4 border-white/60 aspect-[4/5] max-h-[540px]"
+                className="rounded-3xl overflow-hidden shadow-2xl border-4 border-white/60 aspect-[4/5] max-h-[540px] bg-[#1C140E]"
               >
                 <img
-                  src="./sip_cafe_storefront.jpg"
-                  alt="Sip Cafe welcoming two-story storefront in Pipalbot, Kathmandu"
+                  src={settings.hero_image || './sip_cafe_real_original.jpg'}
+                  alt="Sip Cafe storefront and terrace in Pipalbot, Kathmandu"
                   loading="lazy"
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
