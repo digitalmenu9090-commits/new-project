@@ -1,6 +1,6 @@
 {
-  "name": "SIP CAFE",
-  "description": "Visit Sip Cafe at Pipalbot, Kathmandu for delicious food, refreshing drinks, great coffee and a cozy cafe experience. Open every day from 7 AM to 9 PM.",
+  "name": "SIP CAFE Admin Dashboard",
+  "description": "Modern, professional admin dashboard for SIP CAFE. Manage orders, menu, customers, offers, services, sales analytics, and cafe settings.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

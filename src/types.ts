@@ -49,3 +49,84 @@ export interface GalleryItem {
   image_url: string;
   aspect?: 'tall' | 'wide' | 'square';
 }
+
+export type OrderStatus = 'Pending' | 'Preparing' | 'Ready' | 'Completed' | 'Cancelled';
+
+export interface OrderItem {
+  itemId: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string;
+  orderType: 'Dine-In' | 'Takeaway' | 'Delivery';
+  tableNumber?: string;
+  items: OrderItem[];
+  subtotal: number;
+  discount: number;
+  totalAmount: number;
+  status: OrderStatus;
+  paymentStatus: 'Paid' | 'Unpaid';
+  paymentMethod: 'Cash' | 'Fonepay (QR)' | 'Card';
+  createdAt: string;
+  notes?: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderDate: string;
+  joinedDate: string;
+  notes?: string;
+  favoriteItem?: string;
+}
+
+export interface Offer {
+  id: string;
+  title: string;
+  code: string;
+  discountType: 'percentage' | 'flat';
+  discountValue: number;
+  validUntil: string;
+  minOrderAmount: number;
+  isActive: boolean;
+  description: string;
+  timesUsed: number;
+}
+
+export interface CafeService {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  isActive: boolean;
+  category: string;
+  badge?: string;
+}
+
+export interface AdminProfile {
+  name: string;
+  email: string;
+  role: string;
+  phone: string;
+}
+
+export type AdminViewTab =
+  | 'overview'
+  | 'orders'
+  | 'menu'
+  | 'customers'
+  | 'offers'
+  | 'services'
+  | 'analytics'
+  | 'settings';

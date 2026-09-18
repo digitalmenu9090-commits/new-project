@@ -1,12 +1,29 @@
-import { MenuItem, Category, CafeSettings, GalleryItem } from '../types';
-import { INITIAL_CATEGORIES, INITIAL_MENU_ITEMS, INITIAL_CAFE_SETTINGS, INITIAL_GALLERY } from '../data/initialData';
+import { MenuItem, Category, CafeSettings, GalleryItem, Order, Customer, Offer, CafeService, AdminProfile } from '../types';
+import {
+  INITIAL_CATEGORIES,
+  INITIAL_MENU_ITEMS,
+  INITIAL_CAFE_SETTINGS,
+  INITIAL_GALLERY,
+  INITIAL_ORDERS,
+  INITIAL_CUSTOMERS,
+  INITIAL_OFFERS,
+  INITIAL_SERVICES,
+  INITIAL_ADMIN_PROFILE
+} from '../data/initialData';
 
 const STORAGE_KEYS = {
   MENU_ITEMS: 'sip_cafe_cold_coffee_items_v12',
   CATEGORIES: 'sip_cafe_cold_coffee_categories_v12',
   SETTINGS: 'sip_cafe_cold_coffee_settings_v12',
   GALLERY: 'sip_cafe_cold_coffee_gallery_v12',
-  ADMIN_AUTH: 'sip_cafe_admin_auth'
+  ORDERS: 'sip_cafe_admin_orders_v1',
+  CUSTOMERS: 'sip_cafe_admin_customers_v1',
+  OFFERS: 'sip_cafe_admin_offers_v1',
+  SERVICES: 'sip_cafe_admin_services_v1',
+  ADMIN_PROFILE: 'sip_cafe_admin_profile_v1',
+  ADMIN_PASSWORD: 'sip_cafe_admin_password_v1',
+  ADMIN_LOGGED_IN: 'sip_cafe_admin_logged_in',
+  THEME: 'sip_cafe_admin_theme_v1'
 };
 
 export const getStoredCategories = (): Category[] => {
@@ -49,6 +66,125 @@ export const saveMenuItems = (items: MenuItem[]): void => {
   } catch (e) {
     console.error('Error saving menu items', e);
   }
+};
+
+export const getStoredOrders = (): Order[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.ORDERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error('Error reading orders from storage', e);
+  }
+  return INITIAL_ORDERS;
+};
+
+export const saveOrders = (orders: Order[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+  } catch (e) {
+    console.error('Error saving orders', e);
+  }
+};
+
+export const getStoredCustomers = (): Customer[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error('Error reading customers from storage', e);
+  }
+  return INITIAL_CUSTOMERS;
+};
+
+export const saveCustomers = (customers: Customer[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
+  } catch (e) {
+    console.error('Error saving customers', e);
+  }
+};
+
+export const getStoredOffers = (): Offer[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.OFFERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error('Error reading offers from storage', e);
+  }
+  return INITIAL_OFFERS;
+};
+
+export const saveOffers = (offers: Offer[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.OFFERS, JSON.stringify(offers));
+  } catch (e) {
+    console.error('Error saving offers', e);
+  }
+};
+
+export const getStoredServices = (): CafeService[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SERVICES);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error('Error reading services from storage', e);
+  }
+  return INITIAL_SERVICES;
+};
+
+export const saveServices = (services: CafeService[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(services));
+  } catch (e) {
+    console.error('Error saving services', e);
+  }
+};
+
+export const getStoredAdminProfile = (): AdminProfile => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.ADMIN_PROFILE);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error('Error reading profile', e);
+  }
+  return INITIAL_ADMIN_PROFILE;
+};
+
+export const saveAdminProfile = (profile: AdminProfile): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ADMIN_PROFILE, JSON.stringify(profile));
+  } catch (e) {
+    console.error('Error saving profile', e);
+  }
+};
+
+export const getStoredAdminPassword = (): string => {
+  return localStorage.getItem(STORAGE_KEYS.ADMIN_PASSWORD) || 'sipcafe9090';
+};
+
+export const saveAdminPassword = (pw: string): void => {
+  localStorage.setItem(STORAGE_KEYS.ADMIN_PASSWORD, pw);
+};
+
+export const getStoredTheme = (): 'light' | 'dark' => {
+  const t = localStorage.getItem(STORAGE_KEYS.THEME);
+  return t === 'dark' ? 'dark' : 'light';
+};
+
+export const saveTheme = (t: 'light' | 'dark'): void => {
+  localStorage.setItem(STORAGE_KEYS.THEME, t);
 };
 
 export const getStoredCafeSettings = (): CafeSettings => {
@@ -102,9 +238,11 @@ export const resetAllToDefault = (): void => {
   localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
   localStorage.removeItem(STORAGE_KEYS.SETTINGS);
   localStorage.removeItem(STORAGE_KEYS.GALLERY);
-  // Clear legacy keys if present
-  localStorage.removeItem('sip_cafe_menu_items_v2');
-  localStorage.removeItem('sip_cafe_categories_v2');
+  localStorage.removeItem(STORAGE_KEYS.ORDERS);
+  localStorage.removeItem(STORAGE_KEYS.CUSTOMERS);
+  localStorage.removeItem(STORAGE_KEYS.OFFERS);
+  localStorage.removeItem(STORAGE_KEYS.SERVICES);
+  localStorage.removeItem(STORAGE_KEYS.ADMIN_PROFILE);
 };
 
 // Calculate open/closed status based on Kathmandu operating hours: 7:00 AM (07:00) to 9:00 PM (21:00)
