@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Coffee, Phone, Menu as MenuIcon, X, Clock, MapPin, Shield, Sparkles, Lock } from 'lucide-react';
+import { Coffee, Phone, Menu as MenuIcon, X, Clock, MapPin, Sparkles, Lock } from 'lucide-react';
 import { CafeSettings } from '../types';
 import { getCafeOpenStatus } from '../utils/storage';
 
@@ -143,25 +143,23 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin, isAdminLo
             <span>VIEW MENU</span>
           </a>
 
-          {/* Admin link */}
+          {/* Secure Owner Access Button */}
           <button
             onClick={onOpenAdmin}
-            id="nav-admin-btn"
-            className={`p-2 rounded-full transition-all focus:outline-none relative ${
+            id="nav-owner-btn"
+            className={`p-2 rounded-full transition-all focus:outline-none relative flex items-center gap-1.5 cursor-pointer ${
               isAdminLoggedIn
-                ? 'text-[#C89D5C] bg-[#2A1810] border border-[#C89D5C]/50 shadow-xs'
+                ? 'text-[#C89D5C] bg-[#2A1810] border border-[#C89D5C]/60 shadow-xs'
                 : 'text-[#FAF7F2]/60 hover:text-[#C89D5C] hover:bg-[#2A1810]/60'
             }`}
-            title={isAdminLoggedIn ? "Open Admin Dashboard (Active)" : "Admin Login & Management"}
-            aria-label="Admin settings"
+            title={isAdminLoggedIn ? "Open Admin Dashboard (Authorized)" : "Owner / Staff Login"}
+            aria-label="Owner access"
           >
-            {isAdminLoggedIn ? (
-              <>
-                <Shield className="w-4 h-4 text-[#C89D5C]" />
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#1C140E]" />
-              </>
-            ) : (
-              <Lock className="w-4 h-4" />
+            <Lock className="w-4 h-4" />
+            {isAdminLoggedIn && (
+              <span className="hidden xl:inline text-[10px] font-bold text-[#C89D5C] uppercase tracking-wider pr-1">
+                Admin
+              </span>
             )}
           </button>
         </div>
@@ -256,24 +254,16 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin, isAdminLo
                   <span>Order on WhatsApp</span>
                 </a>
 
+                {/* Mobile Owner Access */}
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
                     onOpenAdmin();
                   }}
-                  className="w-full py-2.5 text-xs text-[#FAF7F2]/80 hover:text-[#C89D5C] flex items-center justify-center gap-1.5 transition-colors bg-[#2A1810]/40 rounded-xl border border-white/5"
+                  className="w-full py-2.5 text-xs text-[#FAF7F2]/80 hover:text-[#C89D5C] flex items-center justify-center gap-2 transition-colors bg-[#2A1810]/40 rounded-xl border border-white/5 cursor-pointer mt-1"
                 >
-                  {isAdminLoggedIn ? (
-                    <>
-                      <Shield className="w-3.5 h-3.5 text-[#C89D5C]" />
-                      <span className="text-[#C89D5C] font-semibold">Open Admin Dashboard (Active)</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>Admin Login</span>
-                    </>
-                  )}
+                  <Lock className="w-3.5 h-3.5 text-[#C89D5C]" />
+                  <span>{isAdminLoggedIn ? 'Open Admin Dashboard (Active)' : 'Owner / Staff Portal'}</span>
                 </button>
               </div>
             </div>

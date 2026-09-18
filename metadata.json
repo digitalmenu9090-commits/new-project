@@ -1,6 +1,6 @@
 {
-  "name": "SIP CAFE Admin Dashboard",
-  "description": "Modern, professional admin dashboard for SIP CAFE. Manage orders, menu, customers, offers, services, sales analytics, and cafe settings.",
+  "name": "SIP CAFE",
+  "description": "Authentic cafe in Pipalbot, Kathmandu serving handcrafted coffee, momos, appetizing bites, and refreshing beverages with WhatsApp ordering.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

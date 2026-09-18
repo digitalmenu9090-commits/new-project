@@ -1,14 +1,15 @@
 import React from 'react';
-import { Coffee, MapPin, Phone, Clock, MessageCircle, Instagram, Facebook, Shield } from 'lucide-react';
+import { Coffee, MapPin, Phone, Clock, MessageCircle, Instagram, Facebook, Lock } from 'lucide-react';
 import { CafeSettings } from '../types';
 import { getCafeOpenStatus } from '../utils/storage';
 
 interface FooterProps {
   settings: CafeSettings;
-  onOpenAdmin: () => void;
+  onOpenAdmin?: () => void;
+  isAdminLoggedIn?: boolean;
 }
 
-export const Footer: React.FC<FooterProps> = ({ settings, onOpenAdmin }) => {
+export const Footer: React.FC<FooterProps> = ({ settings, onOpenAdmin, isAdminLoggedIn }) => {
   const status = getCafeOpenStatus(settings.opening_time, settings.closing_time);
 
   return (
@@ -165,18 +166,23 @@ export const Footer: React.FC<FooterProps> = ({ settings, onOpenAdmin }) => {
           </div>
         </div>
 
-        {/* Bottom Bar with Admin Portal Access */}
+        {/* Bottom Bar */}
         <div className="pt-8 border-t border-[#FAF7F2]/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-[#E4D9C8]/60">
           <p>© {new Date().getFullYear()} SIP CAFE · Kathmandu, Nepal. All rights reserved.</p>
 
           <div className="flex items-center gap-4">
-            <button
-              onClick={onOpenAdmin}
-              className="hover:text-[#C89D5C] flex items-center gap-1.5 transition-colors focus:outline-none"
-            >
-              <Shield className="w-3.5 h-3.5 text-[#C89D5C]" />
-              <span>Admin Portal</span>
-            </button>
+            <p className="text-stone-500 hidden md:inline">Pipalbot, Kathmandu · Good Food, Great Coffee, Better Vibes</p>
+            {onOpenAdmin && (
+              <button
+                onClick={onOpenAdmin}
+                id="footer-owner-btn"
+                className="hover:text-[#C89D5C] text-stone-400 flex items-center gap-1.5 transition-colors focus:outline-none cursor-pointer py-1 px-2 rounded-md hover:bg-white/5"
+                title="Owner & Staff Administration"
+              >
+                <Lock className="w-3 h-3 text-[#C89D5C]" />
+                <span>{isAdminLoggedIn ? 'Owner Dashboard (Active)' : 'Owner / Staff Portal'}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
