@@ -35,6 +35,7 @@ import {
   PlusCircle,
   Minus,
   CheckCheck,
+  Camera,
 } from 'lucide-react';
 import {
   Category,
@@ -47,6 +48,7 @@ import {
   OrderStatus,
 } from '../../types';
 import { ConfirmationModal } from './ConfirmationModal';
+import { ImageUploadField } from './ImageUploadField';
 import { playNewOrderSound, playSuccessSound } from '../../utils/sound';
 
 interface AdminDashboardProps {
@@ -733,11 +735,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <img
-                      src={item.image_url}
-                      alt={item.name}
-                      className="w-16 h-16 rounded-xl object-cover shrink-0 border border-stone-100"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditingItem(item)}
+                      className="relative group/thumb shrink-0 rounded-xl overflow-hidden border border-stone-100 cursor-pointer"
+                      title="Click to edit item & change photo"
+                    >
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="w-16 h-16 object-cover group-hover/thumb:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white">
+                        <Camera className="w-4 h-4" />
+                      </div>
+                    </button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <span className="font-bold text-sm text-stone-900 truncate">
@@ -1473,13 +1485,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Image URL</label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
+                <ImageUploadField
                   value={newItemForm.image_url}
-                  onChange={(e) => setNewItemForm(prev => ({ ...prev, image_url: e.target.value }))}
-                  className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden"
+                  onChange={(url) => setNewItemForm(prev => ({ ...prev, image_url: url }))}
+                  label="Item Image (Upload from phone/device, Link, or Presets)"
                 />
               </div>
 
@@ -1600,12 +1609,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Image URL</label>
-                <input
-                  type="url"
+                <ImageUploadField
                   value={editingItem.image_url}
-                  onChange={(e) => setEditingItem({ ...editingItem, image_url: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden"
+                  onChange={(url) => setEditingItem({ ...editingItem, image_url: url })}
+                  label="Item Image (Upload from phone/device, Link, or Presets)"
                 />
               </div>
 
