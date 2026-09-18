@@ -146,6 +146,43 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Handle customer placing order from menu via WhatsApp
+  const handleRecordOrder = (item: MenuItem) => {
+    const numericPrice = parseInt(item.price.replace(/\D/g, ''), 10) || 160;
+    const orderId = `ORD-${Date.now().toString().slice(-4)}`;
+    const newOrder: Order = {
+      id: orderId,
+      orderNumber: `#${orderId}`,
+      customerName: 'WhatsApp Customer',
+      customerPhone: settings.whatsapp,
+      items: [
+        {
+          itemId: item.id,
+          name: item.name,
+          unitPrice: numericPrice,
+          totalPrice: numericPrice,
+          quantity: 1,
+        },
+      ],
+      subtotal: numericPrice,
+      discount: 0,
+      totalAmount: numericPrice,
+      status: 'Pending',
+      createdAt: new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kathmandu',
+      }),
+      orderType: 'Delivery',
+      paymentMethod: 'Cash',
+      paymentStatus: 'Unpaid',
+      notes: `Order initiated from website menu for ${item.name}`,
+    };
+
+    setOrders(prev => [newOrder, ...prev]);
+  };
+
   // Secret keyboard shortcut: Ctrl+Shift+A or Cmd+Shift+A
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -214,6 +251,7 @@ export default function App() {
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
           whatsappNumber={settings.whatsapp}
+          onRecordOrder={handleRecordOrder}
         />
 
         {/* Customer Favorites */}

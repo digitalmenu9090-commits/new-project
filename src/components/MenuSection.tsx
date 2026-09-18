@@ -9,6 +9,7 @@ interface MenuSectionProps {
   selectedCategoryId: string;
   onSelectCategory: (categoryId: string) => void;
   whatsappNumber: string;
+  onRecordOrder?: (item: MenuItem) => void;
 }
 
 export const MenuSection: React.FC<MenuSectionProps> = ({
@@ -17,6 +18,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
   selectedCategoryId,
   onSelectCategory,
   whatsappNumber,
+  onRecordOrder,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dietaryFilter, setDietaryFilter] = useState<'all' | 'veg' | 'non-veg' | 'beverage'>('all');
@@ -48,6 +50,11 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
   }, [items, selectedCategoryId, dietaryFilter, searchQuery]);
 
   const handleWhatsAppOrder = (item: MenuItem) => {
+    // Record order in system for admin dashboard & notification
+    if (onRecordOrder) {
+      onRecordOrder(item);
+    }
+
     const text = encodeURIComponent(
       `Hello Sip Cafe Kathmandu! I would like to order: ${item.name} (रू ${item.price}). Is it available right now?`
     );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Store,
@@ -27,18 +27,27 @@ import {
   Percent,
   Check,
   X,
-  FileText
+  FileText,
+  Volume2,
+  VolumeX,
+  MessageCircle,
+  Send,
+  PlusCircle,
+  Minus,
+  CheckCheck,
 } from 'lucide-react';
 import {
   Category,
   MenuItem,
   CafeSettings,
   Order,
+  OrderItem,
   Customer,
   Offer,
-  OrderStatus
+  OrderStatus,
 } from '../../types';
 import { ConfirmationModal } from './ConfirmationModal';
+import { playNewOrderSound, playSuccessSound } from '../../utils/sound';
 
 interface AdminDashboardProps {
   categories: Category[];
@@ -74,7 +83,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onLogout,
 }) => {
   // Navigation tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'orders' | 'settings' | 'offers'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'orders' | 'settings' | 'offers'>('menu');
 
   // Real-time clock in Asia/Kathmandu
   const [currentTime, setCurrentTime] = useState('');
@@ -96,11 +105,50 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Modals state
+  // Notification Sound State
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sip_cafe_sound_enabled') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const [orderAlertToast, setOrderAlertToast] = useState<string | null>(null);
+
+  // Monitor incoming orders to play notification sound
+  const prevOrdersCountRef = useRef(orders.length);
+  useEffect(() => {
+    if (orders.length > prevOrdersCountRef.current) {
+      if (soundEnabled) {
+        playNewOrderSound();
+      }
+      const newestOrder = orders[0];
+      if (newestOrder) {
+        setOrderAlertToast(`🔔 New Order Received: #${newestOrder.id} (${newestOrder.customerName}) — रू ${newestOrder.totalAmount}`);
+        setTimeout(() => setOrderAlertToast(null), 6000);
+      }
+    }
+    prevOrdersCountRef.current = orders.length;
+  }, [orders.length, soundEnabled]);
+
+  // Modals & form state
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [isAddingNewItem, setIsAddingNewItem] = useState(false);
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<Order | null>(null);
+
+  // Quick Inline Price Editing
+  const [quickPriceEditId, setQuickPriceEditId] = useState<string | null>(null);
+  const [quickPriceValue, setQuickPriceValue] = useState<string>('');
+
+  // Manual Counter/WhatsApp Order Creation Modal
+  const [isCreatingManualOrder, setIsCreatingManualOrder] = useState(false);
+  const [manualOrderCustomerName, setManualOrderCustomerName] = useState('');
+  const [manualOrderCustomerPhone, setManualOrderCustomerPhone] = useState('');
+  const [manualOrderType, setManualOrderType] = useState<Order['orderType']>('Delivery');
+  const [manualOrderTable, setManualOrderTable] = useState('');
+  const [manualOrderSelectedItems, setManualOrderSelectedItems] = useState<{ [itemId: string]: number }>({});
 
   // Search & Filter in Menu
   const [menuSearch, setMenuSearch] = useState('');
@@ -136,6 +184,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       ...prev,
       is_force_closed: !prev.is_force_closed,
     }));
+    playSuccessSound();
   };
 
   const isCafeOpen = !settings.is_force_closed;
@@ -145,6 +194,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setMenuItems(prev =>
       prev.map(item => (item.id === id ? { ...item, is_available: !item.is_available } : item))
     );
+    playSuccessSound();
   };
 
   // Toggle item popular
@@ -152,6 +202,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setMenuItems(prev =>
       prev.map(item => (item.id === id ? { ...item, is_popular: !item.is_popular } : item))
     );
+    playSuccessSound();
   };
 
   // Delete item
@@ -159,7 +210,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (itemToDelete) {
       setMenuItems(prev => prev.filter(item => item.id !== itemToDelete));
       setItemToDelete(null);
+      playSuccessSound();
+      setOrderAlertToast('Item deleted from menu');
+      setTimeout(() => setOrderAlertToast(null), 2500);
     }
+  };
+
+  // Quick Price Change function
+  const handleQuickPriceChange = (itemId: string, newPriceStr: string) => {
+    if (!newPriceStr.trim()) return;
+    setMenuItems(prev =>
+      prev.map(item => (item.id === itemId ? { ...item, price: newPriceStr.trim() } : item))
+    );
+    setQuickPriceEditId(null);
+    playSuccessSound();
+    setOrderAlertToast(`Price updated to रू ${newPriceStr.trim()}`);
+    setTimeout(() => setOrderAlertToast(null), 2500);
+  };
+
+  // Quick Price Adjust (+/- रू 10)
+  const handleQuickPriceAdjust = (itemId: string, delta: number) => {
+    const item = menuItems.find(i => i.id === itemId);
+    if (!item) return;
+    const currentNum = parseInt(item.price.replace(/\D/g, ''), 10) || 100;
+    const newPrice = Math.max(10, currentNum + delta).toString();
+    handleQuickPriceChange(itemId, newPrice);
   };
 
   // Save new item
@@ -182,6 +257,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     setMenuItems(prev => [created, ...prev]);
     setIsAddingNewItem(false);
+    playSuccessSound();
+    setOrderAlertToast(`Added "${created.name}" (रू ${created.price}) to menu!`);
+    setTimeout(() => setOrderAlertToast(null), 3000);
+
     setNewItemForm({
       name: '',
       price: '',
@@ -202,6 +281,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setMenuItems(prev =>
       prev.map(item => (item.id === editingItem.id ? editingItem : item))
     );
+    playSuccessSound();
+    setOrderAlertToast(`Saved changes for "${editingItem.name}" (रू ${editingItem.price})!`);
+    setTimeout(() => setOrderAlertToast(null), 3000);
     setEditingItem(null);
   };
 
@@ -210,14 +292,149 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setOrders(prev =>
       prev.map(o => (o.id === orderId ? { ...o, status: newStatus } : o))
     );
+    playSuccessSound();
   };
 
   // Save settings
   const handleSaveCafeSettings = (e: React.FormEvent) => {
     e.preventDefault();
     setSettings(tempSettings);
+    playSuccessSound();
     setSettingsSavedMessage('Cafe settings & announcement updated successfully!');
     setTimeout(() => setSettingsSavedMessage(''), 3000);
+  };
+
+  // WhatsApp helper for Customer Orders
+  const handleWhatsAppCustomer = (order: Order, type: 'status' | 'ready' | 'receipt') => {
+    const rawPhone = order.customerPhone.replace(/\D/g, '');
+    const cleanPhone = rawPhone.length === 10 ? rawPhone : (settings.whatsapp || '9767560484');
+    const itemsList = order.items.map(i => `• ${i.quantity}x ${i.name} (रू ${i.totalPrice || i.unitPrice * i.quantity})`).join('\n');
+
+    let message = '';
+    if (type === 'status') {
+      message = `Namaste ${order.customerName}! 🙏\n\nYour order *#${order.id}* from *SIP CAFE Kathmandu* is currently: *${order.status.toUpperCase()}*.\n\n*Ordered Items:*\n${itemsList}\n\n*Total Amount:* रू ${order.totalAmount}\nPayment: ${order.paymentStatus} (${order.paymentMethod})\n\nThank you for choosing Sip Cafe Pipalbot! ☕✨`;
+    } else if (type === 'ready') {
+      message = `Namaste ${order.customerName}! 🎉\n\nYour order *#${order.id}* is *READY* at SIP CAFE!\n\n*Items:*\n${itemsList}\n\n*Total Amount:* रू ${order.totalAmount}\n\nYou can collect it at our counter or our delivery partner is on their way.\nEnjoy your meal & fresh coffee! ☕\nSIP CAFE · Pipalbot, Kathmandu`;
+    } else if (type === 'receipt') {
+      message = `🧾 *SIP CAFE KATHMANDU - ORDER RECEIPT*\n----------------------------------\nOrder No: #${order.id}\nTime: ${order.createdAt}\nCustomer: ${order.customerName} (${order.customerPhone})\nType: ${order.orderType} ${order.tableNumber ? `· Table ${order.tableNumber}` : ''}\n----------------------------------\n*ITEMS:*\n${itemsList}\n----------------------------------\n*TOTAL AMOUNT: रू ${order.totalAmount}*\nPayment: ${order.paymentMethod} (${order.paymentStatus})\n----------------------------------\n📍 Pipalbot, Kathmandu | Ph: ${settings.phone}\nThank you for visiting SIP CAFE!`;
+    }
+
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/977${cleanPhone}?text=${encoded}`, '_blank');
+  };
+
+  // Simulate an incoming order (useful for testing sound & order pipeline)
+  const handleSimulateOrder = () => {
+    const randomItem = menuItems[Math.floor(Math.random() * menuItems.length)] || {
+      id: 'item-demo',
+      name: 'Himalayan Iced Americano',
+      price: '180',
+    };
+    const numericPrice = parseInt(randomItem.price.replace(/\D/g, ''), 10) || 180;
+    const demoNames = ['Pooja Thapa', 'Rohan Pradhan', 'Aayush Shrestha', 'Sneha Sharma', 'Bikash Adhikari', 'Kritika Gurung'];
+    const randomName = demoNames[Math.floor(Math.random() * demoNames.length)];
+    const randomPhone = `98${Math.floor(10000000 + Math.random() * 90000000)}`;
+    const orderId = `ORD-${Date.now().toString().slice(-4)}`;
+
+    const newOrder: Order = {
+      id: orderId,
+      orderNumber: `#${orderId}`,
+      customerName: randomName,
+      customerPhone: randomPhone,
+      items: [
+        {
+          itemId: randomItem.id,
+          name: randomItem.name,
+          unitPrice: numericPrice,
+          totalPrice: numericPrice,
+          quantity: 1,
+        },
+      ],
+      subtotal: numericPrice,
+      discount: 0,
+      totalAmount: numericPrice,
+      status: 'Pending',
+      createdAt: new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kathmandu',
+      }),
+      orderType: 'Delivery',
+      paymentMethod: 'Cash',
+      paymentStatus: 'Unpaid',
+      notes: 'Order placed via WhatsApp online menu',
+    };
+
+    setOrders(prev => [newOrder, ...prev]);
+    if (soundEnabled) {
+      playNewOrderSound();
+    }
+  };
+
+  // Submit manual order created by counter staff
+  const handleCreateManualOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    const itemEntries = Object.entries(manualOrderSelectedItems).filter(([_, qty]) => qty > 0);
+    if (itemEntries.length === 0) {
+      alert('Please select at least one menu item.');
+      return;
+    }
+
+    const orderItems: OrderItem[] = itemEntries.map(([itemId, qty]) => {
+      const item = menuItems.find(m => m.id === itemId);
+      const priceNum = item ? (parseInt(item.price.replace(/\D/g, ''), 10) || 150) : 150;
+      return {
+        itemId,
+        name: item?.name || 'Cafe Item',
+        unitPrice: priceNum,
+        totalPrice: priceNum * qty,
+        quantity: qty,
+      };
+    });
+
+    const totalAmount = orderItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    const orderId = `ORD-${Date.now().toString().slice(-4)}`;
+
+    const newOrder: Order = {
+      id: orderId,
+      orderNumber: `#${orderId}`,
+      customerName: manualOrderCustomerName || 'Walk-in Guest',
+      customerPhone: manualOrderCustomerPhone || settings.whatsapp || '9800000000',
+      tableNumber: manualOrderTable ? manualOrderTable : undefined,
+      items: orderItems,
+      subtotal: totalAmount,
+      discount: 0,
+      totalAmount,
+      status: 'Preparing',
+      createdAt: new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kathmandu',
+      }),
+      orderType: manualOrderType,
+      paymentMethod: 'Cash',
+      paymentStatus: 'Paid',
+    };
+
+    setOrders(prev => [newOrder, ...prev]);
+    if (soundEnabled) {
+      playNewOrderSound();
+    }
+
+    // Optionally launch WhatsApp with receipt
+    if (manualOrderCustomerPhone && manualOrderCustomerPhone.length >= 7) {
+      handleWhatsAppCustomer(newOrder, 'receipt');
+    }
+
+    setIsCreatingManualOrder(false);
+    setManualOrderCustomerName('');
+    setManualOrderCustomerPhone('');
+    setManualOrderTable('');
+    setManualOrderSelectedItems({});
+    setOrderAlertToast(`Created Order #${newOrder.id} for ${newOrder.customerName} (रू ${totalAmount})`);
+    setTimeout(() => setOrderAlertToast(null), 4000);
   };
 
   // Calculate metrics
@@ -226,13 +443,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     .reduce((sum, o) => sum + o.totalAmount, 0);
 
   const pendingOrders = orders.filter(o => o.status === 'Pending');
-  const activeOrders = orders.filter(o => o.status === 'Pending' || o.status === 'Preparing');
 
   // Filtered menu items
   const filteredMenuItems = menuItems.filter(item => {
     const matchesCategory = selectedCategoryFilter === 'all' || item.category_id === selectedCategoryFilter;
     const matchesSearch = item.name.toLowerCase().includes(menuSearch.toLowerCase()) ||
-      item.description.toLowerCase().includes(menuSearch.toLowerCase());
+      item.description.toLowerCase().includes(menuSearch.toLowerCase()) ||
+      item.price.toLowerCase().includes(menuSearch.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -244,8 +461,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div className="min-h-screen bg-[#F5F2EC] text-stone-900 flex flex-col font-sans">
+      {/* Real-time Order Alert Toast */}
+      {orderAlertToast && (
+        <div className="sticky top-0 z-50 bg-[#2A1810] text-[#C89D5C] px-4 py-3 border-b border-[#C89D5C]/50 shadow-xl flex items-center justify-between gap-3 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-2.5 max-w-4xl mx-auto text-xs sm:text-sm font-semibold">
+            <Bell className="w-4 h-4 text-[#C89D5C] animate-bounce shrink-0" />
+            <span>{orderAlertToast}</span>
+          </div>
+          <button
+            onClick={() => setOrderAlertToast(null)}
+            className="text-stone-400 hover:text-white p-1"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Top Admin Header Bar */}
-      <header className="sticky top-0 z-40 bg-[#1C140E] text-white border-b border-[#3D281B] px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4 shadow-md">
+      <header className="sticky top-0 z-40 bg-[#1C140E] text-white border-b border-[#3D281B] px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-4 shadow-md">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-[#C89D5C] text-[#1C140E] font-serif font-black flex items-center justify-center text-base shadow-xs">
             S
@@ -260,15 +493,56 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-stone-400 mt-0.5 font-medium">
-              Pipalbot, Kathmandu · Administrative Management
+              Pipalbot, Kathmandu · Admin Management & Live Register
             </p>
           </div>
         </div>
 
         {/* Center/Right Controls */}
-        <div className="flex items-center flex-wrap gap-2.5 sm:gap-3">
+        <div className="flex items-center flex-wrap gap-2 sm:gap-2.5">
+          {/* Notification Sound Toggle */}
+          <button
+            onClick={() => {
+              const newVal = !soundEnabled;
+              setSoundEnabled(newVal);
+              try {
+                localStorage.setItem('sip_cafe_sound_enabled', String(newVal));
+              } catch {
+                // Ignore
+              }
+              if (newVal) playNewOrderSound();
+            }}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              soundEnabled
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                : 'bg-stone-800/80 border-stone-700 text-stone-400'
+            }`}
+            title={soundEnabled ? 'Order sound is ON (Click to mute)' : 'Order sound is MUTED (Click to unmute)'}
+          >
+            {soundEnabled ? (
+              <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+            ) : (
+              <VolumeX className="w-3.5 h-3.5 text-stone-400" />
+            )}
+            <span>{soundEnabled ? 'Sound: ON' : 'Sound: OFF'}</span>
+          </button>
+
+          {/* Test Sound Bell Button */}
+          <button
+            onClick={() => {
+              playNewOrderSound();
+              setOrderAlertToast('🔔 Cafe bell chime played successfully!');
+              setTimeout(() => setOrderAlertToast(null), 3000);
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-[#2A1810] border border-[#C89D5C]/40 hover:border-[#C89D5C] text-[#C89D5C] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Play order notification bell chime"
+          >
+            <Bell className="w-3.5 h-3.5 text-[#C89D5C]" />
+            <span className="hidden sm:inline">Test Sound</span>
+          </button>
+
           {/* Real-time Clock */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs font-mono text-stone-300">
+          <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs font-mono text-stone-300">
             <Clock className="w-3.5 h-3.5 text-[#C89D5C]" />
             <span>{currentTime || 'Kathmandu, NP'}</span>
           </div>
@@ -291,7 +565,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <button
             onClick={onExitToWebsite}
             className="px-3.5 py-1.5 rounded-xl bg-[#C89D5C] hover:bg-[#B58C4F] text-[#1C140E] text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
-            title="Return to the public website storefront view"
+            title="Return to the customer storefront website"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>View Live Website</span>
@@ -313,18 +587,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <nav className="bg-white border-b border-stone-200 px-4 sm:px-8 py-2 overflow-x-auto shadow-2xs">
         <div className="max-w-7xl mx-auto flex items-center gap-2 text-xs font-bold">
           <button
-            onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'overview'
-                ? 'bg-[#2A1810] text-[#C89D5C]'
-                : 'text-stone-600 hover:bg-stone-100'
-            }`}
-          >
-            <TrendingUp className="w-4 h-4" />
-            <span>Overview & Stats</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('menu')}
             className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'menu'
@@ -333,7 +595,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             }`}
           >
             <Coffee className="w-4 h-4" />
-            <span>Menu & Prices ({menuItems.length})</span>
+            <span>Menu & Item Prices ({menuItems.length})</span>
           </button>
 
           <button
@@ -345,12 +607,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             }`}
           >
             <ShoppingBag className="w-4 h-4" />
-            <span>Orders ({orders.length})</span>
+            <span>Orders & WhatsApp ({orders.length})</span>
             {pendingOrders.length > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-black text-[10px] font-black">
                 {pendingOrders.length}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'overview'
+                ? 'bg-[#2A1810] text-[#C89D5C]'
+                : 'text-stone-600 hover:bg-stone-100'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span>Overview & Stats</span>
           </button>
 
           <button
@@ -381,204 +655,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* ======================= TAB: OVERVIEW ======================= */}
-        {activeTab === 'overview' && (
-          <div className="space-y-6 animate-in fade-in duration-150">
-            {/* KPI Cards Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs">
-                <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-2">
-                  <span>Total Sales (Settled)</span>
-                  <DollarSign className="w-4 h-4 text-[#C89D5C]" />
-                </div>
-                <div className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
-                  रू {totalSales.toLocaleString()}
-                </div>
-                <div className="text-[11px] text-emerald-600 font-medium mt-1">
-                  Active register revenue
-                </div>
-              </div>
-
-              <div className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs">
-                <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-2">
-                  <span>Pending Orders</span>
-                  <ShoppingBag className="w-4 h-4 text-amber-500" />
-                </div>
-                <div className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
-                  {pendingOrders.length}
-                </div>
-                <div className="text-[11px] text-amber-600 font-medium mt-1">
-                  Requires barista action
-                </div>
-              </div>
-
-              <div className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs">
-                <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-2">
-                  <span>Menu Items Live</span>
-                  <Coffee className="w-4 h-4 text-[#C89D5C]" />
-                </div>
-                <div className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
-                  {menuItems.filter(i => i.is_available).length}
-                  <span className="text-xs font-sans text-stone-400 font-normal"> / {menuItems.length} total</span>
-                </div>
-                <div className="text-[11px] text-stone-500 font-medium mt-1">
-                  Across {categories.length} categories
-                </div>
-              </div>
-
-              <div className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs">
-                <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-2">
-                  <span>Cafe Status</span>
-                  <Store className="w-4 h-4 text-emerald-600" />
-                </div>
-                <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900 flex items-center gap-2">
-                  <span className={`w-3 h-3 rounded-full ${isCafeOpen ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                  <span>{isCafeOpen ? 'Open Now' : 'Closed'}</span>
-                </div>
-                <div className="text-[11px] text-stone-500 font-medium mt-1">
-                  {settings.opening_time} – {settings.closing_time}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions and Announcement Banner Preview */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Quick Actions Column */}
-              <div className="p-6 bg-white rounded-3xl border border-stone-200 shadow-xs space-y-4">
-                <h3 className="font-serif font-bold text-base text-stone-900">
-                  Quick Actions
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => {
-                      setActiveTab('menu');
-                      setIsAddingNewItem(true);
-                    }}
-                    className="p-3 bg-stone-50 hover:bg-stone-100 rounded-2xl border border-stone-200 text-left transition-all cursor-pointer"
-                  >
-                    <Plus className="w-5 h-5 text-[#C89D5C] mb-1.5" />
-                    <div className="text-xs font-bold text-stone-900">Add Menu Item</div>
-                    <div className="text-[10px] text-stone-400">Add drink, momo or food</div>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('settings')}
-                    className="p-3 bg-stone-50 hover:bg-stone-100 rounded-2xl border border-stone-200 text-left transition-all cursor-pointer"
-                  >
-                    <Sparkles className="w-5 h-5 text-amber-500 mb-1.5" />
-                    <div className="text-xs font-bold text-stone-900">Broadcast Banner</div>
-                    <div className="text-[10px] text-stone-400">Update announcement</div>
-                  </button>
-
-                  <button
-                    onClick={handleToggleCafeOpen}
-                    className="p-3 bg-stone-50 hover:bg-stone-100 rounded-2xl border border-stone-200 text-left transition-all cursor-pointer"
-                  >
-                    <Store className="w-5 h-5 text-blue-500 mb-1.5" />
-                    <div className="text-xs font-bold text-stone-900">Toggle Open/Close</div>
-                    <div className="text-[10px] text-stone-400">Currently {isCafeOpen ? 'Open' : 'Closed'}</div>
-                  </button>
-
-                  <button
-                    onClick={onExitToWebsite}
-                    className="p-3 bg-[#FAF3E8] hover:bg-[#F5E8D4] rounded-2xl border border-[#C89D5C]/40 text-left transition-all cursor-pointer"
-                  >
-                    <Eye className="w-5 h-5 text-[#C89D5C] mb-1.5" />
-                    <div className="text-xs font-bold text-stone-900">Live Website</div>
-                    <div className="text-[10px] text-stone-500">Preview as customer</div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Active Orders List */}
-              <div className="lg:col-span-2 p-6 bg-white rounded-3xl border border-stone-200 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-serif font-bold text-base text-stone-900">
-                      Recent Orders Queue
-                    </h3>
-                    <p className="text-xs text-stone-400">Live kitchen & counter orders</p>
-                  </div>
-                  <button
-                    onClick={() => setActiveTab('orders')}
-                    className="text-xs text-[#C89D5C] font-bold hover:underline"
-                  >
-                    View All Orders →
-                  </button>
-                </div>
-
-                <div className="divide-y divide-stone-100">
-                  {orders.slice(0, 4).map(order => (
-                    <div key={order.id} className="py-3 flex items-center justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-stone-900">{order.customerName}</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 font-mono">
-                            {order.orderNumber}
-                          </span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                            order.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
-                            order.status === 'Preparing' ? 'bg-blue-100 text-blue-800' :
-                            order.status === 'Ready' ? 'bg-purple-100 text-purple-800' :
-                            'bg-amber-100 text-amber-800'
-                          }`}>
-                            {order.status}
-                          </span>
-                        </div>
-                        <div className="text-xs text-stone-500 mt-1">
-                          {order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <div className="text-xs font-serif font-bold text-stone-900">
-                          रू {order.totalAmount}
-                        </div>
-                        <button
-                          onClick={() => setSelectedReceiptOrder(order)}
-                          className="text-[10px] text-[#C89D5C] hover:underline font-medium"
-                        >
-                          View Receipt
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ======================= TAB: MENU MANAGEMENT ======================= */}
+        {/* ======================= TAB: MENU & PRICES ======================= */}
         {activeTab === 'menu' && (
           <div className="space-y-6 animate-in fade-in duration-150">
-            {/* Top Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-3xl border border-stone-200 shadow-xs">
+            {/* Header & Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-stone-200 shadow-xs">
               <div>
-                <h2 className="font-serif font-bold text-xl text-stone-900">
-                  Menu Items & Pricing
+                <h2 className="font-serif font-bold text-xl text-stone-900 flex items-center gap-2">
+                  <span>Menu & Price Management</span>
+                  <span className="text-xs font-sans font-normal text-stone-400">
+                    ({filteredMenuItems.length} displayed)
+                  </span>
                 </h2>
-                <p className="text-xs text-stone-500">
-                  Manage drinks, momos, appetizing bites, edit prices, and mark sold-out items
+                <p className="text-xs text-stone-500 mt-1">
+                  Instantly edit prices, change names, mark items In Stock / Sold Out, and add new specialties.
                 </p>
               </div>
 
-              <button
-                onClick={() => setIsAddingNewItem(true)}
-                className="px-4 py-2.5 rounded-xl bg-[#C89D5C] hover:bg-[#B58C4F] text-[#1C140E] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add New Item</span>
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setIsAddingNewItem(true)}
+                  className="px-4 py-2 rounded-xl bg-[#2A1810] hover:bg-[#3D281B] text-[#C89D5C] text-xs font-bold flex items-center gap-2 transition-colors shadow-xs cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add New Menu Item</span>
+                </button>
+              </div>
             </div>
 
-            {/* Filters Bar */}
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="relative flex-1 w-full">
+            {/* Search & Category Filter */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-80">
                 <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search item by name or ingredients..."
+                  placeholder="Search item by name, price or ingredients..."
                   value={menuSearch}
                   onChange={(e) => setMenuSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-white border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-hidden focus:border-[#C89D5C]"
@@ -639,8 +750,73 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         )}
                       </div>
 
-                      <div className="text-xs font-serif font-bold text-[#C89D5C] mt-0.5">
-                        रू {item.price}
+                      {/* QUICK PRICE EDITOR */}
+                      <div className="mt-1">
+                        {quickPriceEditId === item.id ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-bold text-[#C89D5C]">रू</span>
+                            <input
+                              type="text"
+                              value={quickPriceValue}
+                              onChange={(e) => setQuickPriceValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleQuickPriceChange(item.id, quickPriceValue);
+                                } else if (e.key === 'Escape') {
+                                  setQuickPriceEditId(null);
+                                }
+                              }}
+                              autoFocus
+                              className="w-20 px-2 py-0.5 text-xs font-bold bg-amber-50 border border-[#C89D5C] rounded-md focus:outline-hidden"
+                            />
+                            <button
+                              onClick={() => handleQuickPriceChange(item.id, quickPriceValue)}
+                              className="p-1 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
+                              title="Save Price"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setQuickPriceEditId(null)}
+                              className="p-1 bg-stone-200 text-stone-600 rounded-md hover:bg-stone-300"
+                              title="Cancel"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setQuickPriceEditId(item.id);
+                                setQuickPriceValue(item.price);
+                              }}
+                              className="group/price flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100/80 border border-[#C89D5C]/30 text-xs font-serif font-bold text-[#C89D5C] transition-colors cursor-pointer"
+                              title="Click to quickly edit price"
+                            >
+                              <span>रू {item.price}</span>
+                              <Edit2 className="w-2.5 h-2.5 opacity-60 group-hover/price:opacity-100" />
+                            </button>
+
+                            {/* Quick +/- 10 Buttons */}
+                            <div className="flex items-center gap-0.5 text-[10px]">
+                              <button
+                                onClick={() => handleQuickPriceAdjust(item.id, -10)}
+                                className="px-1.5 py-0.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-sm font-bold"
+                                title="Decrease price by रू 10"
+                              >
+                                -10
+                              </button>
+                              <button
+                                onClick={() => handleQuickPriceAdjust(item.id, 10)}
+                                className="px-1.5 py-0.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-sm font-bold"
+                                title="Increase price by रू 10"
+                              >
+                                +10
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <p className="text-[11px] text-stone-500 line-clamp-2 mt-1 leading-snug">
@@ -679,7 +855,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <button
                         onClick={() => setEditingItem(item)}
                         className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
-                        title="Edit item and price"
+                        title="Edit full item details & price"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -699,120 +875,328 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* ======================= TAB: ORDERS ======================= */}
+        {/* ======================= TAB: ORDERS & WHATSAPP ======================= */}
         {activeTab === 'orders' && (
           <div className="space-y-6 animate-in fade-in duration-150">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-stone-200 shadow-xs">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-stone-200 shadow-xs">
               <div>
-                <h2 className="font-serif font-bold text-xl text-stone-900">
-                  Customer Orders Pipeline
+                <h2 className="font-serif font-bold text-xl text-stone-900 flex items-center gap-2">
+                  <span>Customer Orders Pipeline</span>
+                  <span className="text-xs font-sans font-normal text-stone-400">
+                    ({orders.length} total)
+                  </span>
                 </h2>
-                <p className="text-xs text-stone-500">
-                  Manage real-time counter, dine-in, takeaway and WhatsApp delivery orders
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Real-time counter, dine-in, and WhatsApp orders with one-click customer WhatsApp messaging.
                 </p>
               </div>
 
-              {/* Status Filter Buttons */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                {(['all', 'Pending', 'Preparing', 'Ready', 'Completed'] as const).map(status => (
-                  <button
-                    key={status}
-                    onClick={() => setOrderStatusFilter(status)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      orderStatusFilter === status
-                        ? 'bg-[#2A1810] text-[#C89D5C]'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
-                  >
-                    {status === 'all' ? 'All Orders' : status}
-                  </button>
-                ))}
+              {/* Action Buttons: New Order, Test Order, Status Filters */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setIsCreatingManualOrder(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ New Counter / WhatsApp Order</span>
+                </button>
+
+                <button
+                  onClick={handleSimulateOrder}
+                  className="px-3 py-1.5 rounded-xl bg-[#2A1810] hover:bg-[#3D281B] text-[#C89D5C] text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer border border-[#C89D5C]/30"
+                  title="Simulate an online order to test sound chime and live queue"
+                >
+                  <Bell className="w-3.5 h-3.5 text-[#C89D5C]" />
+                  <span>🔔 Test Incoming Order</span>
+                </button>
               </div>
             </div>
 
-            {/* Orders List */}
-            <div className="space-y-3">
-              {filteredOrders.map(order => (
-                <div
-                  key={order.id}
-                  className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+            {/* Status Filter Buttons */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              {(['all', 'Pending', 'Preparing', 'Ready', 'Completed'] as const).map(status => (
+                <button
+                  key={status}
+                  onClick={() => setOrderStatusFilter(status)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    orderStatusFilter === status
+                      ? 'bg-[#2A1810] text-[#C89D5C]'
+                      : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                  }`}
                 >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-serif font-bold text-sm text-stone-900">
-                        {order.customerName}
-                      </span>
-                      <span className="font-mono text-xs text-stone-400">
-                        ({order.customerPhone})
-                      </span>
-                      <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[11px] font-bold">
-                        {order.orderType} {order.tableNumber ? `· Table ${order.tableNumber}` : ''}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        order.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
-                        order.status === 'Preparing' ? 'bg-blue-100 text-blue-800' :
-                        order.status === 'Ready' ? 'bg-purple-100 text-purple-800' :
-                        'bg-amber-100 text-amber-800'
-                      }`}>
-                        ● {order.status}
-                      </span>
+                  {status === 'all' ? `All (${orders.length})` : `${status} (${orders.filter(o => o.status === status).length})`}
+                </button>
+              ))}
+            </div>
+
+            {/* Orders List */}
+            {filteredOrders.length === 0 ? (
+              <div className="bg-white p-12 rounded-3xl border border-stone-200 text-center space-y-3">
+                <ShoppingBag className="w-10 h-10 text-stone-300 mx-auto" />
+                <h3 className="font-serif font-bold text-stone-700">No orders in this category</h3>
+                <p className="text-xs text-stone-400 max-w-sm mx-auto">
+                  Orders placed on the website or via WhatsApp will appear here automatically with real-time sound notifications.
+                </p>
+                <button
+                  onClick={handleSimulateOrder}
+                  className="px-4 py-2 bg-[#C89D5C] text-[#1C140E] rounded-xl text-xs font-bold"
+                >
+                  Simulate a Sample Order
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredOrders.map(order => (
+                  <div
+                    key={order.id}
+                    className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-serif font-bold text-sm text-stone-900">
+                          {order.customerName}
+                        </span>
+                        <span className="font-mono text-xs text-stone-500 font-semibold">
+                          ({order.customerPhone})
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[11px] font-bold">
+                          {order.orderType} {order.tableNumber ? `· Table ${order.tableNumber}` : ''}
+                        </span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          order.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
+                          order.status === 'Preparing' ? 'bg-blue-100 text-blue-800' :
+                          order.status === 'Ready' ? 'bg-purple-100 text-purple-800' :
+                          'bg-amber-100 text-amber-800'
+                        }`}>
+                          ● {order.status}
+                        </span>
+                        <span className="text-[11px] text-stone-400 ml-1">
+                          {order.createdAt}
+                        </span>
+                      </div>
+
+                      <div className="text-xs text-stone-700 font-medium">
+                        {order.items.map(item => `${item.quantity}x ${item.name}`).join(' + ')}
+                      </div>
+
+                      {order.notes && (
+                        <div className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md inline-block">
+                          Note: {order.notes}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="text-xs text-stone-600">
-                      {order.items.map(item => `${item.quantity}x ${item.name}`).join(' + ')}
+                    <div className="flex items-center justify-between lg:justify-end gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-stone-100 flex-wrap">
+                      <div className="text-left lg:text-right pr-2">
+                        <div className="text-base font-serif font-bold text-[#C89D5C]">
+                          रू {order.totalAmount}
+                        </div>
+                        <div className="text-[10px] text-stone-400">
+                          {order.paymentMethod} · {order.paymentStatus}
+                        </div>
+                      </div>
+
+                      {/* WHATSAPP CUSTOMER ACTIONS */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleWhatsAppCustomer(order, 'status')}
+                          className="px-2.5 py-1.5 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white border border-[#25D366]/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                          title="Message customer order status on WhatsApp"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>WhatsApp Update</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleWhatsAppCustomer(order, 'receipt')}
+                          className="p-2 rounded-xl bg-stone-100 hover:bg-[#25D366] hover:text-white text-stone-700 transition-colors cursor-pointer"
+                          title="Send Bill Receipt via WhatsApp"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Status Pipeline Buttons */}
+                      <div className="flex items-center gap-1.5">
+                        {order.status === 'Pending' && (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(order.id, 'Preparing')}
+                            className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer"
+                          >
+                            Start Preparing
+                          </button>
+                        )}
+
+                        {order.status === 'Preparing' && (
+                          <button
+                            onClick={() => {
+                              handleUpdateOrderStatus(order.id, 'Ready');
+                              handleWhatsAppCustomer(order, 'ready');
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                            title="Mark ready and notify customer on WhatsApp"
+                          >
+                            <span>Ready & WhatsApp</span>
+                          </button>
+                        )}
+
+                        {order.status === 'Ready' && (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(order.id, 'Completed')}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer"
+                          >
+                            Complete
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => setSelectedReceiptOrder(order)}
+                          className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer"
+                          title="View Thermal Receipt"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-                  <div className="flex items-center justify-between md:justify-end gap-4 pt-3 md:pt-0 border-t md:border-t-0 border-stone-100">
-                    <div className="text-left md:text-right">
-                      <div className="text-base font-serif font-bold text-[#C89D5C]">
-                        रू {order.totalAmount}
-                      </div>
-                      <div className="text-[10px] text-stone-400">
-                        {order.paymentMethod} · {order.paymentStatus}
-                      </div>
-                    </div>
+        {/* ======================= TAB: OVERVIEW ======================= */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6 animate-in fade-in duration-150">
+            {/* KPI Cards Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs">
+                <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-2">
+                  <span>Total Sales (Settled)</span>
+                  <DollarSign className="w-4 h-4 text-[#C89D5C]" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
+                  रू {totalSales.toLocaleString()}
+                </div>
+                <div className="text-[11px] text-emerald-600 font-medium mt-1">
+                  Active register revenue
+                </div>
+              </div>
 
-                    {/* Status Action Buttons */}
-                    <div className="flex items-center gap-1.5">
-                      {order.status === 'Pending' && (
-                        <button
-                          onClick={() => handleUpdateOrderStatus(order.id, 'Preparing')}
-                          className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all"
-                        >
-                          Start Preparing
-                        </button>
-                      )}
+              <div className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs">
+                <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-2">
+                  <span>Pending Orders</span>
+                  <ShoppingBag className="w-4 h-4 text-amber-500" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
+                  {pendingOrders.length}
+                </div>
+                <div className="text-[11px] text-amber-600 font-medium mt-1">
+                  Requires barista action
+                </div>
+              </div>
 
-                      {order.status === 'Preparing' && (
-                        <button
-                          onClick={() => handleUpdateOrderStatus(order.id, 'Ready')}
-                          className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all"
-                        >
-                          Mark Ready
-                        </button>
-                      )}
+              <div className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs">
+                <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-2">
+                  <span>Menu Items Live</span>
+                  <Coffee className="w-4 h-4 text-[#C89D5C]" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
+                  {menuItems.filter(i => i.is_available).length}
+                  <span className="text-xs font-sans text-stone-400 font-normal"> / {menuItems.length} total</span>
+                </div>
+                <div className="text-[11px] text-stone-500 font-medium mt-1">
+                  Across {categories.length} categories
+                </div>
+              </div>
 
-                      {order.status === 'Ready' && (
-                        <button
-                          onClick={() => handleUpdateOrderStatus(order.id, 'Completed')}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all"
-                        >
-                          Complete Order
-                        </button>
-                      )}
+              <div className="p-5 bg-white rounded-2xl border border-stone-200 shadow-xs">
+                <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-2">
+                  <span>Cafe Status</span>
+                  <Store className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div className="text-xl sm:text-2xl font-serif font-bold text-stone-900 flex items-center gap-2">
+                  <span className={`w-3 h-3 rounded-full ${isCafeOpen ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                  <span>{isCafeOpen ? 'Open Now' : 'Closed'}</span>
+                </div>
+                <div className="text-[11px] text-stone-500 font-medium mt-1">
+                  {settings.opening_time} – {settings.closing_time}
+                </div>
+              </div>
+            </div>
 
-                      <button
-                        onClick={() => setSelectedReceiptOrder(order)}
-                        className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
-                        title="View Thermal Receipt"
-                      >
-                        <FileText className="w-4 h-4" />
-                      </button>
-                    </div>
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="p-6 bg-white rounded-3xl border border-stone-200 shadow-xs space-y-4">
+                <h3 className="font-serif font-bold text-base text-stone-900">
+                  Quick Actions
+                </h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setActiveTab('menu');
+                      setIsAddingNewItem(true);
+                    }}
+                    className="w-full p-3 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-800 text-xs font-bold flex items-center justify-between transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-[#C89D5C]" />
+                      Add New Food / Drink Item
+                    </span>
+                    <span className="text-stone-400">→</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('orders');
+                      setIsCreatingManualOrder(true);
+                    }}
+                    className="w-full p-3 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-800 text-xs font-bold flex items-center justify-between transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                      Create Counter / WhatsApp Order
+                    </span>
+                    <span className="text-stone-400">→</span>
+                  </button>
+
+                  <button
+                    onClick={handleSimulateOrder}
+                    className="w-full p-3 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-800 text-xs font-bold flex items-center justify-between transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-amber-500" />
+                      Test Order Notification Bell
+                    </span>
+                    <span className="text-stone-400">🔔</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Operating details card */}
+              <div className="lg:col-span-2 p-6 bg-white rounded-3xl border border-stone-200 shadow-xs space-y-3">
+                <h3 className="font-serif font-bold text-base text-stone-900">
+                  Active Cafe Configuration
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-stone-50 rounded-xl">
+                    <span className="text-stone-400 block text-[11px]">Primary Location</span>
+                    <span className="font-semibold text-stone-800">{settings.address}</span>
+                  </div>
+                  <div className="p-3 bg-stone-50 rounded-xl">
+                    <span className="text-stone-400 block text-[11px]">Direct WhatsApp Line</span>
+                    <span className="font-semibold text-emerald-600">+977 {settings.whatsapp}</span>
+                  </div>
+                  <div className="p-3 bg-stone-50 rounded-xl">
+                    <span className="text-stone-400 block text-[11px]">Operating Hours</span>
+                    <span className="font-semibold text-stone-800">{settings.opening_time} to {settings.closing_time}</span>
+                  </div>
+                  <div className="p-3 bg-stone-50 rounded-xl">
+                    <span className="text-stone-400 block text-[11px]">Current Phone</span>
+                    <span className="font-semibold text-stone-800">{settings.phone}</span>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         )}
@@ -1006,7 +1390,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <ConfirmationModal
         isOpen={!!itemToDelete}
         title="Delete Menu Item?"
-        message="Are you sure you want to delete this item from your menu? It will be removed from the catalog and website."
+        message="Are you sure you want to delete this item from your menu? It will be removed from the catalog and live website."
         confirmText="Yes, Delete"
         cancelText="Cancel"
         onConfirm={handleConfirmDeleteItem}
@@ -1039,14 +1423,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">Price (रू)</label>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Price in Nepali Rupees (रू)</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g., 220 or 150/190"
+                    placeholder="e.g., 220"
                     value={newItemForm.price}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, price: e.target.value }))}
-                    className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden"
+                    className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden font-bold"
                   />
                 </div>
 
@@ -1065,10 +1449,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Dietary Classification</label>
+                <select
+                  value={newItemForm.dietary || 'beverage'}
+                  onChange={(e) => setNewItemForm(prev => ({ ...prev, dietary: e.target.value as any }))}
+                  className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden bg-white"
+                >
+                  <option value="beverage">Beverage / Coffee / Drink</option>
+                  <option value="veg">Vegetarian</option>
+                  <option value="non-veg">Non-Vegetarian</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1">Description</label>
                 <textarea
                   rows={2}
-                  placeholder="Item details, ingredients..."
+                  placeholder="Item details, ingredients, flavor notes..."
                   value={newItemForm.description}
                   onChange={(e) => setNewItemForm(prev => ({ ...prev, description: e.target.value }))}
                   className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden"
@@ -1094,7 +1491,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, is_popular: e.target.checked }))}
                     className="rounded text-[#C89D5C]"
                   />
-                  <span>Mark as Popular</span>
+                  <span>Mark as Popular / Customer Favorite</span>
                 </label>
 
                 <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
@@ -1133,7 +1530,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h3 className="font-serif font-bold text-lg text-stone-900">Edit Menu Item</h3>
+              <h3 className="font-serif font-bold text-lg text-stone-900">Edit Menu Item & Price</h3>
               <button onClick={() => setEditingItem(null)} className="text-stone-400 hover:text-stone-700">
                 <X className="w-5 h-5" />
               </button>
@@ -1147,19 +1544,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   required
                   value={editingItem.name}
                   onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden"
+                  className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden font-bold"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">Price (रू)</label>
+                  <label className="block text-xs font-bold text-[#C89D5C] uppercase tracking-wider mb-1">
+                    Price in रू (Rupees)
+                  </label>
                   <input
                     type="text"
                     required
                     value={editingItem.price}
                     onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden"
+                    className="w-full px-3.5 py-2 border border-[#C89D5C] bg-amber-50/50 rounded-xl text-sm font-serif font-bold text-stone-900 focus:outline-hidden"
                   />
                 </div>
 
@@ -1175,6 +1574,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Dietary Classification</label>
+                <select
+                  value={editingItem.dietary || 'beverage'}
+                  onChange={(e) => setEditingItem({ ...editingItem, dietary: e.target.value as any })}
+                  className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden bg-white"
+                >
+                  <option value="beverage">Beverage / Coffee / Drink</option>
+                  <option value="veg">Vegetarian</option>
+                  <option value="non-veg">Non-Vegetarian</option>
+                </select>
               </div>
 
               <div>
@@ -1205,7 +1617,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     onChange={(e) => setEditingItem({ ...editingItem, is_popular: e.target.checked })}
                     className="rounded text-[#C89D5C]"
                   />
-                  <span>Popular Item</span>
+                  <span>Popular / Customer Favorite</span>
                 </label>
 
                 <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
@@ -1239,15 +1651,162 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
+      {/* Create Manual Counter / WhatsApp Order Modal */}
+      {isCreatingManualOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="font-serif font-bold text-lg text-stone-900 flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-emerald-600" />
+                <span>Create Counter / WhatsApp Order</span>
+              </h3>
+              <button onClick={() => setIsCreatingManualOrder(false)} className="text-stone-400 hover:text-stone-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateManualOrder} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Customer Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., Rohan Sharma"
+                    value={manualOrderCustomerName}
+                    onChange={(e) => setManualOrderCustomerName(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Phone Number (for WhatsApp)</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="e.g., 98XXXXXXXX"
+                    value={manualOrderCustomerPhone}
+                    onChange={(e) => setManualOrderCustomerPhone(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Order Type</label>
+                  <select
+                    value={manualOrderType}
+                    onChange={(e) => setManualOrderType(e.target.value as any)}
+                    className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden bg-white"
+                  >
+                    <option value="WhatsApp Delivery">WhatsApp Delivery</option>
+                    <option value="Dine-in">Dine-in (Table)</option>
+                    <option value="Takeaway">Takeaway / Counter</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Table No. (Optional)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g., 4"
+                    value={manualOrderTable}
+                    onChange={(e) => setManualOrderTable(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-stone-200 rounded-xl text-xs focus:border-[#C89D5C] focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Select Items from Menu */}
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                  Select Items & Quantities
+                </label>
+                <div className="max-h-48 overflow-y-auto border border-stone-200 rounded-xl divide-y divide-stone-100 p-1">
+                  {menuItems.map(item => {
+                    const qty = manualOrderSelectedItems[item.id] || 0;
+                    return (
+                      <div key={item.id} className="p-2 flex items-center justify-between text-xs hover:bg-stone-50">
+                        <div className="min-w-0 pr-2">
+                          <span className="font-bold text-stone-800 block truncate">{item.name}</span>
+                          <span className="text-stone-400 font-serif">रू {item.price}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManualOrderSelectedItems(prev => ({
+                                ...prev,
+                                [item.id]: Math.max(0, (prev[item.id] || 0) - 1),
+                              }));
+                            }}
+                            className="w-6 h-6 rounded-md bg-stone-100 hover:bg-stone-200 flex items-center justify-center font-bold text-stone-600"
+                          >
+                            -
+                          </button>
+                          <span className="w-5 text-center font-bold text-stone-800">{qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManualOrderSelectedItems(prev => ({
+                                ...prev,
+                                [item.id]: (prev[item.id] || 0) + 1,
+                              }));
+                            }}
+                            className="w-6 h-6 rounded-md bg-[#2A1810] hover:bg-[#3D281B] text-[#C89D5C] flex items-center justify-center font-bold"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-stone-100">
+                <div className="text-xs font-serif font-bold text-[#C89D5C]">
+                  Total: रू {
+                    Object.entries(manualOrderSelectedItems).reduce((sum, [id, qty]) => {
+                      const item = menuItems.find(m => m.id === id);
+                      const p = item ? (parseInt(item.price.replace(/\D/g, ''), 10) || 150) : 150;
+                      return sum + p * qty;
+                    }, 0)
+                  }
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingManualOrder(false)}
+                    className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 text-xs font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-xl flex items-center gap-1.5 shadow-sm"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>Save & Send WhatsApp Receipt</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Receipt View Modal */}
       {selectedReceiptOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-stone-900 font-mono text-xs">
             <div className="text-center border-b border-dashed border-stone-300 pb-3">
               <h4 className="font-serif font-bold text-base text-stone-900">SIP CAFE</h4>
-              <p className="text-[11px] text-stone-500">Pipalbot, Kathmandu · 9767560484</p>
+              <p className="text-[11px] text-stone-500">Pipalbot, Kathmandu · {settings.phone}</p>
               <div className="mt-2 text-[10px] text-stone-400">
-                {selectedReceiptOrder.orderNumber} · {selectedReceiptOrder.createdAt}
+                Order #{selectedReceiptOrder.id} · {selectedReceiptOrder.createdAt}
               </div>
             </div>
 
@@ -1285,12 +1844,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               Thank you for visiting SIP CAFE!
             </div>
 
-            <button
-              onClick={() => setSelectedReceiptOrder(null)}
-              className="w-full py-2 bg-stone-900 text-white rounded-xl text-xs font-bold"
-            >
-              Close Receipt
-            </button>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                onClick={() => handleWhatsAppCustomer(selectedReceiptOrder, 'receipt')}
+                className="w-full py-2 bg-[#25D366] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
+              </button>
+              <button
+                onClick={() => setSelectedReceiptOrder(null)}
+                className="w-full py-2 bg-stone-900 text-white rounded-xl text-xs font-bold"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
