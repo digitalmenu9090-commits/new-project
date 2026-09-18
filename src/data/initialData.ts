@@ -91,7 +91,10 @@ export const INITIAL_CAFE_SETTINGS: CafeSettings = {
   hero_title: 'SIP CAFE',
   hero_subtitle: 'GOOD FOOD • GREAT COFFEE • BETTER VIBES',
   hero_description: 'Welcome to Sip Cafe at Pipalbot, Kathmandu! Enjoy handcrafted specialty coffee, refreshing drinks, burgers, momo, and delicious food on our relaxing outdoor terrace.',
-  hero_image: './sip_cafe_real_original.jpg'
+  hero_image: './sip_cafe_real_original.jpg',
+  is_force_closed: false,
+  announcement_enabled: false,
+  announcement_text: 'Welcome to Sip Cafe Pipalbot! Freshly brewed Himalayan coffee, cold brews, momo & outdoor terrace seating.'
 };
 
 export const INITIAL_GALLERY: GalleryItem[] = [

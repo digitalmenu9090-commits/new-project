@@ -59,7 +59,10 @@ export const getStoredCafeSettings = (): CafeSettings => {
       return {
         ...INITIAL_CAFE_SETTINGS,
         ...parsed,
-        secondary_phone: parsed.secondary_phone || INITIAL_CAFE_SETTINGS.secondary_phone || '9813779214'
+        secondary_phone: parsed.secondary_phone || INITIAL_CAFE_SETTINGS.secondary_phone || '9813779214',
+        announcement_text: parsed.announcement_text ?? INITIAL_CAFE_SETTINGS.announcement_text,
+        announcement_enabled: parsed.announcement_enabled ?? INITIAL_CAFE_SETTINGS.announcement_enabled,
+        is_force_closed: parsed.is_force_closed ?? INITIAL_CAFE_SETTINGS.is_force_closed
       };
     }
   } catch (e) {
@@ -107,8 +110,16 @@ export const resetAllToDefault = (): void => {
 // Calculate open/closed status based on Kathmandu operating hours: 7:00 AM (07:00) to 9:00 PM (21:00)
 export const getCafeOpenStatus = (
   openingTimeStr: string = '7:00 AM',
-  closingTimeStr: string = '9:00 PM'
+  closingTimeStr: string = '9:00 PM',
+  isForceClosed?: boolean
 ): { isOpen: boolean; currentStatusText: string; timeDetails: string } => {
+  if (isForceClosed) {
+    return {
+      isOpen: false,
+      currentStatusText: 'CLOSED TODAY',
+      timeDetails: 'Temporarily closed by management'
+    };
+  }
   const parseTime = (timeStr: string): number => {
     const trimmed = timeStr.trim().toUpperCase();
     const isPM = trimmed.includes('PM');

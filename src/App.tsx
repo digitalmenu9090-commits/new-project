@@ -26,6 +26,7 @@ import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { AdminModal } from './components/AdminModal';
+import { AdminQuickBar } from './components/AdminQuickBar';
 
 export default function App() {
   // Application Data State
@@ -38,6 +39,9 @@ export default function App() {
   const [loadingComplete, setLoadingComplete] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [adminOpen, setAdminOpen] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem('sip_cafe_admin_logged_in') === 'true';
+  });
 
   // Sync to local storage whenever state changes
   useEffect(() => {
@@ -96,6 +100,7 @@ export default function App() {
       {/* Persistent Navigation Bar */}
       <Navbar
         settings={settings}
+        isAdminLoggedIn={isAdminLoggedIn}
         onOpenAdmin={() => setAdminOpen(true)}
       />
 
@@ -159,6 +164,17 @@ export default function App() {
       {/* Floating WhatsApp Action Button */}
       <FloatingWhatsApp whatsappNumber={settings.whatsapp} />
 
+      {/* Floating Admin Quick Bar for Owner when viewing public site */}
+      {isAdminLoggedIn && !adminOpen && (
+        <AdminQuickBar
+          onOpenDashboard={() => setAdminOpen(true)}
+          onLogout={() => {
+            localStorage.removeItem('sip_cafe_admin_logged_in');
+            setIsAdminLoggedIn(false);
+          }}
+        />
+      )}
+
       {/* Admin Content Management Modal */}
       <AdminModal
         isOpen={adminOpen}
@@ -171,6 +187,8 @@ export default function App() {
         setSettings={setSettings}
         gallery={gallery}
         setGallery={setGallery}
+        isAdminLoggedIn={isAdminLoggedIn}
+        setIsAdminLoggedIn={setIsAdminLoggedIn}
       />
     </div>
   );

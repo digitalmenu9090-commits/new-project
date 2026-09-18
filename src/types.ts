@@ -37,6 +37,9 @@ export interface CafeSettings {
   hero_subtitle: string;
   hero_description: string;
   hero_image: string;
+  is_force_closed?: boolean;
+  announcement_enabled?: boolean;
+  announcement_text?: string;
 }
 
 export interface GalleryItem {

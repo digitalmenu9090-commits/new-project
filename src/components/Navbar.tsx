@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Coffee, Phone, Menu as MenuIcon, X, Clock, MapPin, Shield } from 'lucide-react';
+import { Coffee, Phone, Menu as MenuIcon, X, Clock, MapPin, Shield, Sparkles, Lock } from 'lucide-react';
 import { CafeSettings } from '../types';
 import { getCafeOpenStatus } from '../utils/storage';
 
 interface NavbarProps {
   settings: CafeSettings;
   onOpenAdmin: () => void;
+  isAdminLoggedIn?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin }) => {
+export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin, isAdminLoggedIn }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [status, setStatus] = useState(() => getCafeOpenStatus(settings.opening_time, settings.closing_time));
+  const [status, setStatus] = useState(() =>
+    getCafeOpenStatus(settings.opening_time, settings.closing_time, settings.is_force_closed)
+  );
 
   useEffect(() => {
     const handleScroll = () => {
@@ -22,13 +25,14 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Recalculate status every minute
+  // Recalculate status every minute or when settings change
   useEffect(() => {
+    setStatus(getCafeOpenStatus(settings.opening_time, settings.closing_time, settings.is_force_closed));
     const interval = setInterval(() => {
-      setStatus(getCafeOpenStatus(settings.opening_time, settings.closing_time));
+      setStatus(getCafeOpenStatus(settings.opening_time, settings.closing_time, settings.is_force_closed));
     }, 60000);
     return () => clearInterval(interval);
-  }, [settings.opening_time, settings.closing_time]);
+  }, [settings.opening_time, settings.closing_time, settings.is_force_closed]);
 
   const navLinks = [
     { label: 'Home', href: '#hero' },
@@ -47,6 +51,14 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin }) => {
           : 'bg-gradient-to-b from-black/80 via-black/40 to-transparent py-4 sm:py-5'
       }`}
     >
+      {/* Live Announcement Banner if enabled by Admin */}
+      {settings.announcement_enabled && settings.announcement_text && (
+        <div className="bg-[#C89D5C] text-[#140D08] px-4 py-1.5 text-center text-xs font-semibold tracking-wide flex items-center justify-center gap-2 mb-2 shadow-xs">
+          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+          <span>{settings.announcement_text}</span>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Brand Logo */}
         <a
@@ -135,11 +147,22 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin }) => {
           <button
             onClick={onOpenAdmin}
             id="nav-admin-btn"
-            className="p-2 rounded-full text-[#FAF7F2]/60 hover:text-[#C89D5C] hover:bg-[#2A1810]/60 transition-colors focus:outline-none"
-            title="Admin Login & Settings"
+            className={`p-2 rounded-full transition-all focus:outline-none relative ${
+              isAdminLoggedIn
+                ? 'text-[#C89D5C] bg-[#2A1810] border border-[#C89D5C]/50 shadow-xs'
+                : 'text-[#FAF7F2]/60 hover:text-[#C89D5C] hover:bg-[#2A1810]/60'
+            }`}
+            title={isAdminLoggedIn ? "Open Admin Dashboard (Active)" : "Admin Login & Management"}
             aria-label="Admin settings"
           >
-            <Shield className="w-4 h-4" />
+            {isAdminLoggedIn ? (
+              <>
+                <Shield className="w-4 h-4 text-[#C89D5C]" />
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#1C140E]" />
+              </>
+            ) : (
+              <Lock className="w-4 h-4" />
+            )}
           </button>
         </div>
 
@@ -238,10 +261,19 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin }) => {
                     setMobileMenuOpen(false);
                     onOpenAdmin();
                   }}
-                  className="w-full py-2.5 text-xs text-[#FAF7F2]/60 hover:text-[#C89D5C] flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full py-2.5 text-xs text-[#FAF7F2]/80 hover:text-[#C89D5C] flex items-center justify-center gap-1.5 transition-colors bg-[#2A1810]/40 rounded-xl border border-white/5"
                 >
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>Admin Login</span>
+                  {isAdminLoggedIn ? (
+                    <>
+                      <Shield className="w-3.5 h-3.5 text-[#C89D5C]" />
+                      <span className="text-[#C89D5C] font-semibold">Open Admin Dashboard (Active)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Admin Login</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

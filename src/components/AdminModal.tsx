@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -7,22 +7,34 @@ import {
   Plus,
   Trash2,
   Edit2,
-  Save,
   RotateCcw,
   Upload,
-  Image as ImageIcon,
   Check,
   AlertCircle,
-  FolderPlus,
   Sliders,
   Sparkles,
   Phone,
   Clock,
   Eye,
-  Download
+  EyeOff,
+  Download,
+  Search,
+  CheckCircle2,
+  XCircle,
+  Star,
+  MapPin,
+  Shield,
+  Coffee,
+  LayoutDashboard,
+  Utensils,
+  FolderTree,
+  Settings as SettingsIcon,
+  Image as ImageIcon,
+  Layers,
+  ArrowUpRight
 } from 'lucide-react';
 import { MenuItem, Category, CafeSettings, GalleryItem } from '../types';
-import { resetAllToDefault } from '../utils/storage';
+import { resetAllToDefault, getCafeOpenStatus } from '../utils/storage';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -35,6 +47,8 @@ interface AdminModalProps {
   setSettings: React.Dispatch<React.SetStateAction<CafeSettings>>;
   gallery: GalleryItem[];
   setGallery: React.Dispatch<React.SetStateAction<GalleryItem[]>>;
+  isAdminLoggedIn?: boolean;
+  setIsAdminLoggedIn?: (val: boolean) => void;
 }
 
 export const AdminModal: React.FC<AdminModalProps> = ({
@@ -48,17 +62,23 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   setSettings,
   gallery,
   setGallery,
+  isAdminLoggedIn,
+  setIsAdminLoggedIn,
 }) => {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('sip_cafe_admin_logged_in') === 'true';
   });
-  const [email, setEmail] = useState('admin@sipcafe.com');
-  const [password, setPassword] = useState('sipcafe2024');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
 
-  // Active Admin Tab
-  const [activeTab, setActiveTab] = useState<'menu' | 'categories' | 'settings' | 'hero' | 'gallery'>('menu');
+  // Active Tab: Overview by default
+  const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'categories' | 'settings' | 'hero' | 'gallery'>('overview');
+
+  // Menu Items Filters
+  const [menuSearch, setMenuSearch] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
 
   // Edit State for Menu Items
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -73,35 +93,46 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [newGalleryCategory, setNewGalleryCategory] = useState('Coffee');
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
 
-  // Success Notification
+  // Notification Toast
   const [notification, setNotification] = useState<string | null>(null);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
+    setTimeout(() => setNotification(null), 3500);
   };
 
+  // Sync external prop if provided
+  React.useEffect(() => {
+    if (isAdminLoggedIn !== undefined) {
+      setIsAuthenticated(isAdminLoggedIn);
+    }
+  }, [isAdminLoggedIn]);
+
+  // Handle Login: Password must strictly be 'sipcafe9090'
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      (email.trim().toLowerCase() === 'admin@sipcafe.com' && password === 'sipcafe2024') ||
-      (email.trim().length > 3 && password.trim().length >= 4)
-    ) {
+    if (password.trim() === 'sipcafe9090') {
       setIsAuthenticated(true);
       localStorage.setItem('sip_cafe_admin_logged_in', 'true');
+      setIsAdminLoggedIn?.(true);
       setAuthError('');
-      showNotification('Successfully authenticated as Administrator');
+      setPassword('');
+      showNotification('Administrator verified. Full website controls unlocked.');
     } else {
-      setAuthError('Invalid credentials. You can use admin@sipcafe.com and sipcafe2024.');
+      setAuthError('Incorrect admin password. Access restricted to Sip Café management.');
     }
   };
 
+  // Handle Logout
   const handleLogout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('sip_cafe_admin_logged_in');
+    setIsAdminLoggedIn?.(false);
+    setPassword('');
+    showNotification('Logged out from admin control.');
   };
 
-  // Image file upload handler (converts to base64)
+  // File Upload Helper
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     callback: (base64: string) => void
@@ -120,7 +151,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         const base64 = reader.result;
         callback(base64);
 
-        // Also push to /api/upload to save directly to disk
         try {
           await fetch('/api/upload', {
             method: 'POST',
@@ -135,13 +165,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  // --- MENU ITEM ACTIONS ---
+  // --- MENU ACTIONS ---
   const handleSaveItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
 
     if (isNewItem) {
-      const newItem = {
+      const newItem: MenuItem = {
         ...editingItem,
         id: `item-${Date.now()}`,
         created_at: new Date().toISOString()
@@ -162,6 +192,20 @@ export const AdminModal: React.FC<AdminModalProps> = ({
       setMenuItems((prev) => prev.filter((i) => i.id !== id));
       showNotification(`Deleted item "${name}"`);
     }
+  };
+
+  const handleToggleAvailability = (id: string) => {
+    setMenuItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, is_available: !i.is_available } : i))
+    );
+    showNotification('Item availability updated');
+  };
+
+  const handleTogglePopular = (id: string) => {
+    setMenuItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, is_popular: !i.is_popular } : i))
+    );
+    showNotification('Item popular badge updated');
   };
 
   // --- CATEGORY ACTIONS ---
@@ -219,7 +263,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
   // --- RESET ALL ---
   const handleReset = () => {
-    if (window.confirm('Reset menu, categories, and settings back to the authentic Kathmandu source data? All custom edits will be reverted.')) {
+    if (window.confirm('Reset menu, categories, and settings back to default authentic Kathmandu source data? Custom edits will be re-initialized.')) {
       resetAllToDefault();
       window.location.reload();
     }
@@ -237,63 +281,106 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportData, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `sip-cafe-backup-${Date.now()}.json`);
+    downloadAnchor.setAttribute('download', `sip-cafe-full-backup-${Date.now()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+    showNotification('Full website backup downloaded');
   };
+
+  // Filtered Menu Items
+  const filteredMenuItems = useMemo(() => {
+    return menuItems.filter((item) => {
+      const matchesCategory = selectedCategoryFilter === 'all' || item.category_id === selectedCategoryFilter;
+      const matchesSearch =
+        !menuSearch.trim() ||
+        item.name.toLowerCase().includes(menuSearch.toLowerCase()) ||
+        item.description.toLowerCase().includes(menuSearch.toLowerCase()) ||
+        item.price.includes(menuSearch);
+      return matchesCategory && matchesSearch;
+    });
+  }, [menuItems, selectedCategoryFilter, menuSearch]);
+
+  // Current Cafe Status
+  const currentStatus = getCafeOpenStatus(
+    settings.opening_time,
+    settings.closing_time,
+    settings.is_force_closed
+  );
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="bg-[#FAF7F2] w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-[#E8DFC8] flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="bg-[#1C140E] text-[#FAF7F2] px-6 py-4 flex items-center justify-between border-b border-[#C89D5C]/30 flex-shrink-0">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+      <div className="bg-[#FAF7F2] w-full max-w-6xl rounded-3xl overflow-hidden shadow-2xl border border-[#E8DFC8] flex flex-col max-h-[95vh]">
+        {/* Top Header Bar */}
+        <div className="bg-[#1C140E] text-[#FAF7F2] px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-[#C89D5C]/30 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#2A1810] border border-[#C89D5C] flex items-center justify-center text-[#C89D5C]">
+            <div className="w-9 h-9 rounded-full bg-[#2A1810] border border-[#C89D5C] flex items-center justify-center text-[#C89D5C] shadow-xs">
               <Sliders className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-serif font-bold text-lg tracking-wider text-[#FAF7F2]">
-                SIP CAFE ADMIN
-              </h3>
-              <span className="text-[10px] text-[#C89D5C] uppercase tracking-widest">
-                Website Content Management · Kathmandu
+              <div className="flex items-center gap-2">
+                <h3 className="font-serif font-bold text-base sm:text-lg tracking-wider text-[#FAF7F2]">
+                  SIP CAFÉ ADMIN DASHBOARD
+                </h3>
+                {isAuthenticated && (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Full Access
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-[#C89D5C] uppercase tracking-widest block">
+                Exclusive Control Center · Pipalbot, Kathmandu
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {isAuthenticated && (
-              <button
-                onClick={handleLogout}
-                className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/40 border border-rose-800/40 transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
+              <>
+                {/* VIEW PUBLIC WEBSITE BUTTON */}
+                <button
+                  onClick={onClose}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#C89D5C] hover:bg-[#B58C4F] text-[#1C140E] font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
+                  title="Close dashboard and view the live website as customers see it"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">View Public Website</span>
+                  <span className="sm:hidden">Public</span>
+                </button>
+
+                {/* Logout Button */}
+                <button
+                  onClick={handleLogout}
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/40 border border-rose-800/40 transition-colors"
+                  title="Logout from Admin"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Logout</span>
+                </button>
+              </>
             )}
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-              aria-label="Close Admin Modal"
+              className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+              aria-label="Close Dashboard"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Floating Notification */}
+        {/* Floating Notification Toast */}
         <AnimatePresence>
           {notification && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="bg-emerald-800 text-white text-xs px-6 py-2.5 flex items-center gap-2 font-medium flex-shrink-0 shadow-sm"
+              className="bg-emerald-800 text-white text-xs px-6 py-2.5 flex items-center gap-2 font-medium flex-shrink-0 shadow-sm border-b border-emerald-700"
             >
               <Check className="w-4 h-4 text-emerald-300" />
               <span>{notification}</span>
@@ -303,16 +390,17 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
         {/* Content Body */}
         {!isAuthenticated ? (
-          /* LOGIN SCREEN */
-          <div className="p-8 sm:p-12 flex flex-col items-center justify-center text-center my-auto">
-            <div className="w-16 h-16 rounded-full bg-[#2A1810] border border-[#C89D5C] flex items-center justify-center text-[#C89D5C] mb-4 shadow-lg">
+          /* SECURE LOGIN SCREEN */
+          <div className="p-6 sm:p-12 flex flex-col items-center justify-center text-center my-auto min-h-[420px]">
+            <div className="w-16 h-16 rounded-2xl bg-[#2A1810] border border-[#C89D5C] flex items-center justify-center text-[#C89D5C] mb-4 shadow-xl">
               <Lock className="w-8 h-8" />
             </div>
+
             <h4 className="text-2xl font-serif font-bold text-[#1C1917] mb-2">
-              Administrator Login
+              Sip Café Administrator Access
             </h4>
-            <p className="text-sm text-[#57534E] max-w-md mb-8">
-              Sign in to manage menu items, categories, cafe operating hours, prices in रू, and gallery photos.
+            <p className="text-sm text-[#57534E] max-w-md mb-6 leading-relaxed">
+              Enter the authorized owner password to manage website menu items, live prices in रू, store timings, and public announcements.
             </p>
 
             <form onSubmit={handleLogin} className="w-full max-w-sm space-y-4 text-left">
@@ -324,213 +412,568 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-[#2A1810] uppercase tracking-wider mb-1">
-                  Admin Email
+                <label className="block text-xs font-semibold text-[#2A1810] uppercase tracking-wider mb-1.5">
+                  Admin Password
                 </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full px-4 py-2.5 bg-white border border-[#D9CEBE] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C89D5C]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#2A1810] uppercase tracking-wider mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-2.5 bg-white border border-[#D9CEBE] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C89D5C]"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="Enter admin password"
+                    autoFocus
+                    className="w-full pl-4 pr-10 py-3 bg-white border border-[#D9CEBE] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C89D5C]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-1"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] font-semibold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-md mt-2"
+                className="w-full py-3.5 bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] font-semibold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md mt-2 flex items-center justify-center gap-2 active:scale-98"
               >
-                Sign In to Admin
+                <Lock className="w-4 h-4 text-[#C89D5C]" />
+                <span>Enter Admin Dashboard</span>
               </button>
 
-              <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/60 text-[11px] text-amber-900 leading-normal">
-                <strong>Demo Credentials:</strong>
-                <br />
-                Email: <code className="bg-amber-100 px-1 rounded">admin@sipcafe.com</code> | Password: <code className="bg-amber-100 px-1 rounded">sipcafe2024</code>
-              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 text-stone-500 hover:text-stone-800 text-xs font-medium text-center transition-colors"
+              >
+                ← Return to Public Website
+              </button>
             </form>
           </div>
         ) : (
-          /* AUTHENTICATED ADMIN DASHBOARD */
+          /* AUTHENTICATED FULL ADMIN DASHBOARD */
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Nav Tabs */}
-            <div className="bg-[#EFE8DD] border-b border-[#E8DFC8] px-6 py-2.5 flex items-center justify-between overflow-x-auto flex-shrink-0">
-              <div className="flex items-center gap-2">
+            {/* Top Navigation Tabs */}
+            <div className="bg-[#EFE8DD] border-b border-[#E8DFC8] px-4 sm:px-6 py-2 flex items-center justify-between overflow-x-auto flex-shrink-0 gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 {[
-                  { id: 'menu', label: `Menu Items (${menuItems.length})` },
-                  { id: 'categories', label: `Categories (${categories.length})` },
-                  { id: 'settings', label: 'Cafe Settings' },
-                  { id: 'hero', label: 'Hero Banner' },
-                  { id: 'gallery', label: `Gallery (${gallery.length})` },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      setActiveTab(tab.id as any);
-                      setEditingItem(null);
-                      setEditingCategory(null);
-                    }}
-                    className={`px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all ${
-                      activeTab === tab.id
-                        ? 'bg-[#2A1810] text-[#FAF7F2] shadow-sm'
-                        : 'text-[#57534E] hover:bg-[#E4D9C8]'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+                  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+                  { id: 'menu', label: `Menu Items (${menuItems.length})`, icon: Utensils },
+                  { id: 'categories', label: `Categories (${categories.length})`, icon: FolderTree },
+                  { id: 'settings', label: 'Cafe Settings', icon: SettingsIcon },
+                  { id: 'hero', label: 'Hero & Photos', icon: ImageIcon },
+                  { id: 'gallery', label: `Gallery (${gallery.length})`, icon: Layers },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id as any);
+                        setEditingItem(null);
+                        setEditingCategory(null);
+                      }}
+                      className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-[#2A1810] text-[#FAF7F2] shadow-sm'
+                          : 'text-[#57534E] hover:bg-[#E4D9C8] hover:text-[#1C1917]'
+                      }`}
+                    >
+                      <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#C89D5C]' : 'text-stone-400'}`} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="flex items-center gap-2 pl-4">
+              {/* Utility Actions */}
+              <div className="flex items-center gap-2 pl-2">
                 <button
                   onClick={handleExportJSON}
-                  className="px-3 py-1 text-xs bg-white hover:bg-stone-100 text-[#2A1810] border border-[#D9CEBE] rounded-lg font-medium flex items-center gap-1"
-                  title="Download backup file"
+                  className="px-3 py-1.5 text-xs bg-white hover:bg-stone-100 text-[#2A1810] border border-[#D9CEBE] rounded-xl font-medium flex items-center gap-1 shadow-2xs"
+                  title="Download full website backup as JSON"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Export</span>
+                  <Download className="w-3.5 h-3.5 text-[#C89D5C]" />
+                  <span className="hidden md:inline">Export</span>
                 </button>
                 <button
                   onClick={handleReset}
-                  className="px-3 py-1 text-xs text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg font-medium flex items-center gap-1"
-                  title="Reset to original Kathmandu menu"
+                  className="px-3 py-1.5 text-xs text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl font-medium flex items-center gap-1"
+                  title="Reset to default Kathmandu source data"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Reset</span>
+                  <span className="hidden md:inline">Reset</span>
                 </button>
               </div>
             </div>
 
-            {/* Tab Panes */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {/* --- TAB 1: MENU ITEMS --- */}
+            {/* Scrollable Tab Pane Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FAF7F2]">
+              {/* === TAB 1: OVERVIEW DASHBOARD === */}
+              {activeTab === 'overview' && (
+                <div className="space-y-6">
+                  {/* Welcome Banner */}
+                  <div className="bg-gradient-to-r from-[#2A1810] to-[#3D2314] text-[#FAF7F2] p-6 rounded-2xl border border-[#C89D5C]/30 shadow-md relative overflow-hidden">
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] text-[#C89D5C] uppercase tracking-widest font-bold">
+                          Welcome, Sip Café Owner
+                        </span>
+                        <h4 className="text-xl sm:text-2xl font-serif font-bold text-white mt-0.5">
+                          Full Administrative Access Enabled
+                        </h4>
+                        <p className="text-xs text-[#E4D9C8]/80 max-w-xl mt-1">
+                          You have total control over the menu catalog, pricing, business hours, storefront photos, and live announcement banners. Public visitors only view the published website.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={onClose}
+                          className="px-4 py-2.5 rounded-xl bg-[#C89D5C] hover:bg-[#B58C4F] text-[#1C140E] font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>View Public Website</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* KPI Stat Cards */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div
+                      onClick={() => setActiveTab('menu')}
+                      className="bg-white p-4 rounded-2xl border border-[#E8DFC8] shadow-xs cursor-pointer hover:border-[#C89D5C] transition-all group"
+                    >
+                      <div className="flex items-center justify-between text-stone-400 group-hover:text-[#C89D5C]">
+                        <Utensils className="w-5 h-5" />
+                        <span className="text-xs font-semibold">Manage →</span>
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-bold font-serif text-[#1C1917] mt-2">
+                        {menuItems.length}
+                      </div>
+                      <div className="text-xs text-stone-500 font-medium mt-0.5">
+                        Active Menu Items
+                      </div>
+                    </div>
+
+                    <div
+                      onClick={() => setActiveTab('categories')}
+                      className="bg-white p-4 rounded-2xl border border-[#E8DFC8] shadow-xs cursor-pointer hover:border-[#C89D5C] transition-all group"
+                    >
+                      <div className="flex items-center justify-between text-stone-400 group-hover:text-[#C89D5C]">
+                        <FolderTree className="w-5 h-5" />
+                        <span className="text-xs font-semibold">Manage →</span>
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-bold font-serif text-[#1C1917] mt-2">
+                        {categories.length}
+                      </div>
+                      <div className="text-xs text-stone-500 font-medium mt-0.5">
+                        Menu Categories
+                      </div>
+                    </div>
+
+                    <div
+                      onClick={() => setActiveTab('gallery')}
+                      className="bg-white p-4 rounded-2xl border border-[#E8DFC8] shadow-xs cursor-pointer hover:border-[#C89D5C] transition-all group"
+                    >
+                      <div className="flex items-center justify-between text-stone-400 group-hover:text-[#C89D5C]">
+                        <Layers className="w-5 h-5" />
+                        <span className="text-xs font-semibold">Manage →</span>
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-bold font-serif text-[#1C1917] mt-2">
+                        {gallery.length}
+                      </div>
+                      <div className="text-xs text-stone-500 font-medium mt-0.5">
+                        Gallery Photos
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-2xl border border-[#E8DFC8] shadow-xs">
+                      <div className="flex items-center justify-between text-stone-400">
+                        <Clock className="w-5 h-5 text-[#C89D5C]" />
+                        <span className="text-[10px] font-bold uppercase text-emerald-600">Live Status</span>
+                      </div>
+                      <div className="text-lg sm:text-xl font-bold font-serif text-[#1C1917] mt-2 flex items-center gap-1.5">
+                        <span className={`w-2.5 h-2.5 rounded-full ${currentStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                        <span>{currentStatus.currentStatusText}</span>
+                      </div>
+                      <div className="text-xs text-stone-500 font-medium mt-0.5 truncate">
+                        {settings.opening_time} – {settings.closing_time}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Controls: Operating Status & Announcement Banner */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Live Cafe Status Override */}
+                    <div className="bg-white p-5 rounded-2xl border border-[#E8DFC8] shadow-xs space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-[#C89D5C]" />
+                        <h5 className="font-serif font-bold text-base text-[#1C1917]">
+                          Live Cafe Operating Status
+                        </h5>
+                      </div>
+                      <p className="text-xs text-stone-500 leading-relaxed">
+                        Control how the cafe status appears to customers on the navigation bar and contact sections.
+                      </p>
+
+                      <div className="flex flex-col gap-2.5 pt-1">
+                        <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          !settings.is_force_closed
+                            ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 font-semibold'
+                            : 'bg-stone-50 border-stone-200 text-stone-600'
+                        }`}>
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                            <div>
+                              <div className="text-xs font-bold">Automatic by Hours (Recommended)</div>
+                              <div className="text-[11px] text-stone-500">Open automatically between {settings.opening_time} and {settings.closing_time}</div>
+                            </div>
+                          </div>
+                          <input
+                            type="radio"
+                            name="cafe_status_override"
+                            checked={!settings.is_force_closed}
+                            onChange={() => {
+                              setSettings((prev) => ({ ...prev, is_force_closed: false }));
+                              showNotification('Cafe status set to automatic hours');
+                            }}
+                            className="text-emerald-600 focus:ring-emerald-500"
+                          />
+                        </label>
+
+                        <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                          settings.is_force_closed
+                            ? 'bg-rose-50/70 border-rose-300 text-rose-950 font-semibold'
+                            : 'bg-stone-50 border-stone-200 text-stone-600'
+                        }`}>
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-3 h-3 rounded-full bg-rose-500" />
+                            <div>
+                              <div className="text-xs font-bold">Temporarily Closed Today</div>
+                              <div className="text-[11px] text-stone-500">Overrides the hours and displays "CLOSED TODAY" on website</div>
+                            </div>
+                          </div>
+                          <input
+                            type="radio"
+                            name="cafe_status_override"
+                            checked={!!settings.is_force_closed}
+                            onChange={() => {
+                              setSettings((prev) => ({ ...prev, is_force_closed: true }));
+                              showNotification('Cafe status set to Temporarily Closed');
+                            }}
+                            className="text-rose-600 focus:ring-rose-500"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Announcement Banner Control */}
+                    <div className="bg-white p-5 rounded-2xl border border-[#E8DFC8] shadow-xs space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-[#C89D5C]" />
+                          <h5 className="font-serif font-bold text-base text-[#1C1917]">
+                            Public Announcement Banner
+                          </h5>
+                        </div>
+
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#2A1810]">
+                          <input
+                            type="checkbox"
+                            checked={!!settings.announcement_enabled}
+                            onChange={(e) => {
+                              setSettings((prev) => ({ ...prev, announcement_enabled: e.target.checked }));
+                              showNotification(e.target.checked ? 'Announcement banner turned ON' : 'Announcement banner turned OFF');
+                            }}
+                            className="w-4 h-4 text-[#C89D5C] rounded focus:ring-[#C89D5C]"
+                          />
+                          <span>Show on Website</span>
+                        </label>
+                      </div>
+
+                      <p className="text-xs text-stone-500">
+                        Display a prominent announcement at the top of the website (e.g. today's special offer, holiday notice, or fresh batch alert).
+                      </p>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-stone-700 uppercase mb-1">
+                          Announcement Text
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.announcement_text || ''}
+                          onChange={(e) => setSettings((prev) => ({ ...prev, announcement_text: e.target.value }))}
+                          placeholder="e.g. Welcome to Sip Cafe Pipalbot! Handcrafted cold brews & momo served fresh daily."
+                          className="w-full px-3 py-2 text-xs bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl focus:ring-2 focus:ring-[#C89D5C] focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Preview Box */}
+                      {settings.announcement_enabled && (
+                        <div className="pt-1">
+                          <span className="text-[10px] text-stone-400 font-semibold uppercase block mb-1">Live Preview:</span>
+                          <div className="bg-[#C89D5C] text-[#140D08] px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2">
+                            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{settings.announcement_text || 'Announcement preview...'}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick Action Shortcuts */}
+                  <div className="bg-white p-5 rounded-2xl border border-[#E8DFC8] shadow-xs">
+                    <h5 className="font-serif font-bold text-base text-[#1C1917] mb-3">
+                      Quick Control Shortcuts
+                    </h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                      <button
+                        onClick={() => {
+                          setActiveTab('menu');
+                          setEditingItem({
+                            id: '',
+                            name: '',
+                            description: '',
+                            price: '',
+                            image_url: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80',
+                            category_id: categories[0]?.id || 'cat-cold-coffee',
+                            is_popular: false,
+                            is_available: true,
+                            created_at: new Date().toISOString(),
+                            dietary: 'beverage'
+                          });
+                          setIsNewItem(true);
+                        }}
+                        className="p-3.5 rounded-xl border border-dashed border-[#C89D5C] hover:bg-[#FAF7F2] text-left transition-colors group"
+                      >
+                        <Plus className="w-4 h-4 text-[#C89D5C] mb-1 group-hover:scale-110 transition-transform" />
+                        <div className="text-xs font-bold text-[#1C1917]">Add New Menu Item</div>
+                        <div className="text-[11px] text-stone-500">Create item & price</div>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveTab('settings')}
+                        className="p-3.5 rounded-xl border border-stone-200 hover:bg-[#FAF7F2] text-left transition-colors group"
+                      >
+                        <Phone className="w-4 h-4 text-[#C89D5C] mb-1 group-hover:scale-110 transition-transform" />
+                        <div className="text-xs font-bold text-[#1C1917]">Contact Numbers</div>
+                        <div className="text-[11px] text-stone-500">9767560484 / 9813779214</div>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveTab('hero')}
+                        className="p-3.5 rounded-xl border border-stone-200 hover:bg-[#FAF7F2] text-left transition-colors group"
+                      >
+                        <ImageIcon className="w-4 h-4 text-[#C89D5C] mb-1 group-hover:scale-110 transition-transform" />
+                        <div className="text-xs font-bold text-[#1C1917]">Hero Storefront Photo</div>
+                        <div className="text-[11px] text-stone-500">Upload or change banner</div>
+                      </button>
+
+                      <button
+                        onClick={onClose}
+                        className="p-3.5 rounded-xl border border-stone-200 hover:bg-[#FAF7F2] text-left transition-colors group"
+                      >
+                        <Eye className="w-4 h-4 text-[#C89D5C] mb-1 group-hover:scale-110 transition-transform" />
+                        <div className="text-xs font-bold text-[#1C1917]">View Public Website</div>
+                        <div className="text-[11px] text-stone-500">Switch to customer view</div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* === TAB 2: MENU ITEMS === */}
               {activeTab === 'menu' && (
                 <div>
                   {!editingItem ? (
                     <div>
-                      <div className="flex items-center justify-between mb-6">
+                      {/* Top Bar: Search, Category Filter, and Add Button */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
                         <div>
                           <h4 className="text-xl font-serif font-bold text-[#1C1917]">
                             Menu Management
                           </h4>
                           <p className="text-xs text-[#78716C]">
-                            Preserve exact item names, descriptions, and slash-separated prices in रू (e.g. 50/75, 125 / 145 / 195, 300/330).
+                            Manage item names, exact slash prices in रू (e.g. 50/75, 125/145/195), categories, and stock availability.
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="px-3 py-1 bg-[#FAF7F2] border border-[#E8DFC8] text-[#2A1810] text-xs font-semibold rounded-full">
-                            {menuItems.length} Total Items
-                          </span>
+
+                        <button
+                          onClick={() => {
+                            setEditingItem({
+                              id: '',
+                              name: '',
+                              description: '',
+                              price: '',
+                              image_url: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80',
+                              category_id: categories[0]?.id || 'cat-cold-coffee',
+                              is_popular: false,
+                              is_available: true,
+                              created_at: new Date().toISOString(),
+                              dietary: 'beverage'
+                            });
+                            setIsNewItem(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] rounded-xl text-xs font-semibold uppercase tracking-wider transition-colors shadow-sm shrink-0"
+                        >
+                          <Plus className="w-4 h-4 text-[#C89D5C]" />
+                          <span>Add New Menu Item</span>
+                        </button>
+                      </div>
+
+                      {/* Filters: Search + Category Selector */}
+                      <div className="bg-white p-3.5 rounded-2xl border border-[#E8DFC8] mb-4 flex flex-col sm:flex-row gap-3 items-center justify-between shadow-2xs">
+                        <div className="relative w-full sm:w-72">
+                          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            placeholder="Search by name, price, or description..."
+                            value={menuSearch}
+                            onChange={(e) => setMenuSearch(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 text-xs bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#C89D5C]"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
                           <button
-                            onClick={() => {
-                              setEditingItem({
-                                id: '',
-                                name: '',
-                                description: '',
-                                price: '',
-                                image_url: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80',
-                                category_id: categories[0]?.id || 'cat-cold-coffee',
-                                is_popular: false,
-                                is_available: true,
-                                created_at: new Date().toISOString(),
-                                dietary: 'beverage'
-                              });
-                              setIsNewItem(true);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] rounded-xl text-xs font-semibold uppercase tracking-wider transition-colors shadow-sm"
+                            onClick={() => setSelectedCategoryFilter('all')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                              selectedCategoryFilter === 'all'
+                                ? 'bg-[#2A1810] text-white font-semibold'
+                                : 'bg-[#FAF7F2] text-stone-600 hover:bg-stone-200'
+                            }`}
                           >
-                            <Plus className="w-4 h-4 text-[#C89D5C]" />
-                            <span>Add New Item</span>
+                            All ({menuItems.length})
                           </button>
+                          {categories.map((c) => (
+                            <button
+                              key={c.id}
+                              onClick={() => setSelectedCategoryFilter(c.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                                selectedCategoryFilter === c.id
+                                  ? 'bg-[#2A1810] text-white font-semibold'
+                                  : 'bg-[#FAF7F2] text-stone-600 hover:bg-stone-200'
+                              }`}
+                            >
+                              {c.name}
+                            </button>
+                          ))}
                         </div>
                       </div>
 
                       {/* Items List Table */}
                       <div className="bg-white rounded-2xl border border-[#E8DFC8] overflow-hidden shadow-sm">
                         <div className="divide-y divide-[#F5EDE1]">
-                          {menuItems.map((item) => {
-                            const cat = categories.find((c) => c.id === item.category_id);
-                            return (
-                              <div
-                                key={item.id}
-                                className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-[#FAF7F2] transition-colors"
-                              >
-                                <div className="flex items-center gap-3.5 min-w-0">
-                                  <img
-                                    src={item.image_url}
-                                    alt={item.name}
-                                    className="w-14 h-14 rounded-xl object-cover border border-[#E8DFC8] flex-shrink-0"
-                                  />
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="font-serif font-bold text-sm text-[#1C1917] truncate">
-                                        {item.name}
+                          {filteredMenuItems.length === 0 ? (
+                            <div className="p-8 text-center text-stone-400 text-xs">
+                              No items found matching your filter criteria.
+                            </div>
+                          ) : (
+                            filteredMenuItems.map((item) => {
+                              const cat = categories.find((c) => c.id === item.category_id);
+                              return (
+                                <div
+                                  key={item.id}
+                                  className="p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:bg-[#FAF7F2] transition-colors"
+                                >
+                                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                    <img
+                                      src={item.image_url}
+                                      alt={item.name}
+                                      className="w-14 h-14 rounded-xl object-cover border border-[#E8DFC8] flex-shrink-0"
+                                    />
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-serif font-bold text-sm text-[#1C1917]">
+                                          {item.name}
+                                        </span>
+                                        {item.is_popular && (
+                                          <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#2A1810] text-[#C89D5C] flex items-center gap-0.5">
+                                            <Star className="w-2.5 h-2.5 fill-current" />
+                                            Popular
+                                          </span>
+                                        )}
+                                        {!item.is_available && (
+                                          <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800">
+                                            Sold Out
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-[#78716C] line-clamp-1 max-w-md mt-0.5">
+                                        {item.description}
+                                      </p>
+                                      <div className="flex items-center gap-2 mt-1 text-[11px] text-[#A89F91]">
+                                        <span className="text-[#C89D5C] font-semibold">{cat?.name || 'Category'}</span>
+                                        <span>•</span>
+                                        <span className="capitalize">{item.dietary || 'Standard'}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-3 self-end sm:self-center">
+                                    <div className="text-right">
+                                      <span className="text-sm font-bold text-[#2A1810] font-mono">
+                                        रू {item.price}
                                       </span>
-                                      {item.is_popular && (
-                                        <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#2A1810] text-[#C89D5C]">
-                                          Popular
-                                        </span>
-                                      )}
-                                      {!item.is_available && (
-                                        <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-800">
-                                          Unavailable
-                                        </span>
-                                      )}
                                     </div>
-                                    <p className="text-xs text-[#78716C] truncate max-w-md mt-0.5">
-                                      {item.description}
-                                    </p>
-                                    <div className="flex items-center gap-2 mt-1 text-[11px] text-[#A89F91]">
-                                      <span className="text-[#C89D5C] font-semibold">{cat?.name || 'Category'}</span>
-                                      <span>•</span>
-                                      <span className="capitalize">{item.dietary || 'Standard'}</span>
-                                    </div>
-                                  </div>
-                                </div>
 
-                                <div className="flex items-center gap-4 self-end sm:self-center">
-                                  <div className="text-right">
-                                    <span className="text-sm font-bold text-[#2A1810]">
-                                      रू {item.price}
-                                    </span>
-                                  </div>
+                                    {/* Quick Availability Toggle */}
+                                    <button
+                                      onClick={() => handleToggleAvailability(item.id)}
+                                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                                        item.is_available
+                                          ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                          : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                                      }`}
+                                      title={item.is_available ? 'Click to mark Sold Out' : 'Click to mark In Stock'}
+                                    >
+                                      {item.is_available ? 'In Stock' : 'Sold Out'}
+                                    </button>
 
-                                  <div className="flex items-center gap-1">
+                                    {/* Quick Popular Toggle */}
+                                    <button
+                                      onClick={() => handleTogglePopular(item.id)}
+                                      className={`p-1.5 rounded-lg transition-colors ${
+                                        item.is_popular
+                                          ? 'text-[#C89D5C] bg-[#2A1810]'
+                                          : 'text-stone-400 hover:text-stone-700 bg-stone-100'
+                                      }`}
+                                      title={item.is_popular ? 'Featured in Popular' : 'Mark as Popular'}
+                                    >
+                                      <Star className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {/* Edit Button */}
                                     <button
                                       onClick={() => {
                                         setEditingItem({ ...item });
                                         setIsNewItem(false);
                                       }}
-                                      className="p-2 text-stone-600 hover:text-[#2A1810] hover:bg-stone-100 rounded-lg transition-colors"
-                                      title="Edit item"
+                                      className="p-1.5 text-stone-600 hover:text-[#2A1810] hover:bg-stone-100 rounded-lg transition-colors"
+                                      title="Edit item details"
                                     >
                                       <Edit2 className="w-4 h-4" />
                                     </button>
+
+                                    {/* Delete Button */}
                                     <button
                                       onClick={() => handleDeleteItem(item.id, item.name)}
-                                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                      className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
                                       title="Delete item"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })
+                          )}
                         </div>
                       </div>
                     </div>
@@ -574,7 +1017,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             value={editingItem.price}
                             onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
                             required
-                            className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl focus:ring-2 focus:ring-[#C89D5C] focus:outline-none"
+                            className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl focus:ring-2 focus:ring-[#C89D5C] focus:outline-none font-mono"
                             placeholder="e.g. 125 / 145 / 195"
                           />
                         </div>
@@ -707,18 +1150,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 </div>
               )}
 
-              {/* --- TAB 2: CATEGORIES --- */}
+              {/* === TAB 3: CATEGORIES === */}
               {activeTab === 'categories' && (
                 <div>
                   {!editingCategory ? (
                     <div>
-                      <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center justify-between mb-5">
                         <div>
                           <h4 className="text-xl font-serif font-bold text-[#1C1917]">
                             Category Controls
                           </h4>
                           <p className="text-xs text-[#78716C]">
-                            Add, reorder, and update image photography for menu categories.
+                            Add, reorder, and update cover images for menu sections.
                           </p>
                         </div>
                         <button
@@ -780,7 +1223,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                                   </button>
                                   <button
                                     onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                                    className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                                    className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
                                     title="Delete category"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -857,12 +1300,15 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 </div>
               )}
 
-              {/* --- TAB 3: CAFE SETTINGS --- */}
+              {/* === TAB 4: CAFE SETTINGS & CONTACT === */}
               {activeTab === 'settings' && (
                 <div className="bg-white p-6 sm:p-8 rounded-2xl border border-[#E8DFC8] max-w-2xl space-y-5">
-                  <h4 className="text-xl font-serif font-bold text-[#1C1917] mb-2">
+                  <h4 className="text-xl font-serif font-bold text-[#1C1917] mb-1">
                     Cafe Identity & Operating Settings
                   </h4>
+                  <p className="text-xs text-stone-500 mb-4">
+                    Update phone numbers, physical address, business hours, and social media handles.
+                  </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -897,7 +1343,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         type="text"
                         value={settings.phone}
                         onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                        className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl"
+                        className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl font-mono"
                         placeholder="9767560484"
                       />
                     </div>
@@ -910,7 +1356,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         type="text"
                         value={settings.secondary_phone || ''}
                         onChange={(e) => setSettings({ ...settings, secondary_phone: e.target.value })}
-                        className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl"
+                        className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl font-mono"
                         placeholder="9813779214"
                       />
                     </div>
@@ -923,7 +1369,20 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         type="text"
                         value={settings.whatsapp}
                         onChange={(e) => setSettings({ ...settings, whatsapp: e.target.value })}
+                        className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#2A1810] uppercase mb-1">
+                        Opening Days
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.opening_days}
+                        onChange={(e) => setSettings({ ...settings, opening_days: e.target.value })}
                         className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl"
+                        placeholder="Every Day"
                       />
                     </div>
 
@@ -935,7 +1394,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         type="text"
                         value={settings.opening_time}
                         onChange={(e) => setSettings({ ...settings, opening_time: e.target.value })}
-                        className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl"
+                        className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl font-mono"
                         placeholder="7:00 AM"
                       />
                     </div>
@@ -948,7 +1407,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         type="text"
                         value={settings.closing_time}
                         onChange={(e) => setSettings({ ...settings, closing_time: e.target.value })}
-                        className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl"
+                        className="w-full px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl font-mono"
                         placeholder="9:00 PM"
                       />
                     </div>
@@ -968,7 +1427,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-[#2A1810] uppercase mb-1">
-                      About Text
+                      About Story / Philosophy
                     </label>
                     <textarea
                       rows={3}
@@ -980,6 +1439,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                   <div className="pt-2">
                     <button
+                      type="button"
                       onClick={() => showNotification('Cafe Settings successfully saved')}
                       className="px-6 py-2.5 bg-[#2A1810] hover:bg-[#3D2314] text-white font-semibold text-xs uppercase tracking-wider rounded-xl shadow-sm"
                     >
@@ -989,11 +1449,11 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 </div>
               )}
 
-              {/* --- TAB 4: HERO BANNER --- */}
+              {/* === TAB 5: HERO & PHOTOS === */}
               {activeTab === 'hero' && (
                 <div className="bg-white p-6 sm:p-8 rounded-2xl border border-[#E8DFC8] max-w-2xl space-y-4">
                   <h4 className="text-xl font-serif font-bold text-[#1C1917] mb-2">
-                    Hero Section Presentation
+                    Hero Section & Storefront Background
                   </h4>
 
                   <div>
@@ -1034,18 +1494,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-[#2A1810] uppercase mb-1">
-                      Hero Background Image URL (or upload below)
+                      Storefront Photo Background (URL or Upload)
                     </label>
                     <div className="flex gap-3 items-center">
                       <input
-                        type="url"
+                        type="text"
                         value={settings.hero_image}
                         onChange={(e) => setSettings({ ...settings, hero_image: e.target.value })}
                         className="flex-1 px-3 py-2 text-sm bg-[#FAF7F2] border border-[#D9CEBE] rounded-xl"
                       />
                       <label className="cursor-pointer px-4 py-2 bg-stone-100 hover:bg-stone-200 border border-stone-300 rounded-xl text-xs font-semibold text-stone-700 flex items-center gap-1.5 whitespace-nowrap">
                         <Upload className="w-3.5 h-3.5" />
-                        <span>Upload</span>
+                        <span>Upload Photo</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -1058,10 +1518,34 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         />
                       </label>
                     </div>
+
+                    {/* Preview of Hero Image */}
+                    <div className="mt-3 relative rounded-xl overflow-hidden border border-[#E8DFC8] h-48 bg-stone-100 flex items-center justify-center">
+                      <img
+                        src={settings.hero_image}
+                        alt="Hero preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-3">
+                        <span className="text-white text-xs font-medium">Live Storefront Image Preview</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettings((prev) => ({ ...prev, hero_image: './sip_cafe_real_original.jpg' }));
+                        showNotification('Restored authentic Kathmandu storefront image');
+                      }}
+                      className="mt-2 text-xs text-[#C89D5C] hover:underline"
+                    >
+                      ↺ Restore Authentic Storefront Photo (Original)
+                    </button>
                   </div>
 
                   <div className="pt-3">
                     <button
+                      type="button"
                       onClick={() => showNotification('Hero presentation updated')}
                       className="px-6 py-2.5 bg-[#2A1810] hover:bg-[#3D2314] text-white font-semibold text-xs uppercase tracking-wider rounded-xl shadow-sm"
                     >
@@ -1071,7 +1555,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 </div>
               )}
 
-              {/* --- TAB 5: GALLERY --- */}
+              {/* === TAB 6: GALLERY === */}
               {activeTab === 'gallery' && (
                 <div className="space-y-6">
                   {/* Add New Gallery Item */}
@@ -1104,6 +1588,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           <option value="Bakery">Bakery</option>
                           <option value="Lassi">Lassi</option>
                           <option value="Cafe Interior">Cafe Interior</option>
+                          <option value="Storefront">Storefront</option>
                         </select>
                       </div>
                       <div className="flex gap-2">
@@ -1144,7 +1629,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           </div>
                           <button
                             onClick={() => handleDeleteGallery(g.id)}
-                            className="p-1.5 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50"
+                            className="p-1.5 text-rose-500 hover:text-rose-700 rounded-lg hover:bg-rose-50"
                             title="Remove photo"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
