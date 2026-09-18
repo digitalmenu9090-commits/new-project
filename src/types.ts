@@ -65,15 +65,15 @@ export interface Order {
   orderNumber: string;
   customerName: string;
   customerPhone: string;
-  orderType: 'Dine-In' | 'Takeaway' | 'Delivery';
+  orderType: 'Dine-In' | 'Takeaway' | 'Delivery' | string;
   tableNumber?: string;
   items: OrderItem[];
   subtotal: number;
   discount: number;
   totalAmount: number;
   status: OrderStatus;
-  paymentStatus: 'Paid' | 'Unpaid';
-  paymentMethod: 'Cash' | 'Fonepay (QR)' | 'Card';
+  paymentStatus: 'Paid' | 'Unpaid' | string;
+  paymentMethod: 'Cash' | 'Fonepay (QR)' | 'Card' | string;
   createdAt: string;
   notes?: string;
 }

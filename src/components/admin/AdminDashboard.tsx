@@ -36,6 +36,9 @@ import {
   Minus,
   CheckCheck,
   Camera,
+  Filter,
+  FolderPlus,
+  CreditCard,
 } from 'lucide-react';
 import {
   Category,
@@ -49,6 +52,10 @@ import {
 } from '../../types';
 import { ConfirmationModal } from './ConfirmationModal';
 import { ImageUploadField } from './ImageUploadField';
+import { CreateOrderModal } from './CreateOrderModal';
+import { EditOrderModal } from './EditOrderModal';
+import { CategoryModal } from './CategoryModal';
+import { CreateOfferModal } from './CreateOfferModal';
 import { playNewOrderSound, playSuccessSound } from '../../utils/sound';
 
 interface AdminDashboardProps {
