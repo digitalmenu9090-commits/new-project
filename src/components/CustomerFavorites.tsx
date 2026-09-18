@@ -1,14 +1,19 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Sparkles, ArrowRight, Plus } from 'lucide-react';
 import { MenuItem } from '../types';
 
 interface CustomerFavoritesProps {
   items: MenuItem[];
   onSelectItem: (item: MenuItem) => void;
+  onAddToCart?: (item: MenuItem) => void;
 }
 
-export const CustomerFavorites: React.FC<CustomerFavoritesProps> = ({ items, onSelectItem }) => {
+export const CustomerFavorites: React.FC<CustomerFavoritesProps> = ({
+  items,
+  onSelectItem,
+  onAddToCart,
+}) => {
   // Use ONLY the existing items (display 3 to 5 items marked popular, or the top 4)
   const popularItems = items.filter((it) => it.is_popular);
   const displayItems = popularItems.length > 0 ? popularItems : items;
@@ -76,15 +81,28 @@ export const CustomerFavorites: React.FC<CustomerFavoritesProps> = ({ items, onS
                   </p>
                 </div>
 
-                <div className="mt-5 pt-3 border-t border-[#F5EDE1] flex items-center justify-between text-xs">
+                <div className="mt-5 pt-3 border-t border-[#F5EDE1] flex items-center justify-between text-xs gap-2">
                   <span className="text-emerald-700 font-medium flex items-center gap-1 text-[11px]">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     Available Fresh
                   </span>
-                  <span className="text-[#2A1810] font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform text-[11px]">
-                    <span>View item</span>
-                    <ArrowRight className="w-3 h-3 text-[#C89D5C]" />
-                  </span>
+                  {onAddToCart ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddToCart(item);
+                      }}
+                      className="px-2.5 py-1 rounded-full bg-[#C89D5C] hover:bg-[#b58c4f] text-[#1C140E] font-bold text-[11px] flex items-center gap-1 shadow-2xs cursor-pointer transition-all active:scale-95"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Order</span>
+                    </button>
+                  ) : (
+                    <span className="text-[#2A1810] font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform text-[11px]">
+                      <span>View item</span>
+                      <ArrowRight className="w-3 h-3 text-[#C89D5C]" />
+                    </span>
+                  )}
                 </div>
               </div>
             </motion.div>

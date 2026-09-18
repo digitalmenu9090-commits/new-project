@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Coffee, Phone, Menu as MenuIcon, X, Clock, MapPin, Sparkles, Lock } from 'lucide-react';
+import { Coffee, Phone, Menu as MenuIcon, X, Clock, MapPin, Sparkles, Lock, ShoppingBag } from 'lucide-react';
 import { CafeSettings } from '../types';
 import { getCafeOpenStatus } from '../utils/storage';
 
@@ -8,9 +8,17 @@ interface NavbarProps {
   settings: CafeSettings;
   onOpenAdmin: () => void;
   isAdminLoggedIn?: boolean;
+  cartCount?: number;
+  onOpenCart?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin, isAdminLoggedIn }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  settings,
+  onOpenAdmin,
+  isAdminLoggedIn,
+  cartCount = 0,
+  onOpenCart,
+}) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [status, setStatus] = useState(() =>
@@ -138,10 +146,28 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin, isAdminLo
           <a
             href="#menu"
             id="nav-view-menu-btn"
-            className="flex items-center gap-1.5 px-5 py-2 rounded-full text-xs uppercase tracking-wider font-semibold bg-[#C89D5C] hover:bg-[#b58c4f] text-[#1C140E] transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#C89D5C]"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs uppercase tracking-wider font-semibold bg-[#C89D5C] hover:bg-[#b58c4f] text-[#1C140E] transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#C89D5C]"
           >
             <span>VIEW MENU</span>
           </a>
+
+          {/* Website Order Bag Button */}
+          {onOpenCart && (
+            <button
+              onClick={onOpenCart}
+              id="nav-cart-btn"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] border border-[#C89D5C]/50 text-xs font-semibold tracking-wider uppercase transition-all shadow-xs cursor-pointer relative"
+              title="View your website order bag"
+            >
+              <ShoppingBag className="w-3.5 h-3.5 text-[#C89D5C]" />
+              <span>Bag</span>
+              {cartCount > 0 && (
+                <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Secure Owner Access Button */}
           <button
@@ -227,6 +253,19 @@ export const Navbar: React.FC<NavbarProps> = ({ settings, onOpenAdmin, isAdminLo
 
               {/* Mobile CTA Buttons */}
               <div className="pt-2 flex flex-col gap-2.5">
+                {onOpenCart && (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onOpenCart();
+                    }}
+                    className="w-full py-3 rounded-xl bg-[#C89D5C] text-[#1C140E] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>View Website Order Bag ({cartCount})</span>
+                  </button>
+                )}
+
                 <div className="grid grid-cols-2 gap-2">
                   <a
                     href={`tel:${settings.phone}`}

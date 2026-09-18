@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Utensils, MessageCircle, X, Check, Search, Eye, Filter, Coffee } from 'lucide-react';
+import { Sparkles, Utensils, MessageCircle, X, Check, Search, Eye, Filter, Coffee, Plus, ShoppingBag } from 'lucide-react';
 import { MenuItem, Category } from '../types';
 
 interface MenuSectionProps {
@@ -10,6 +10,7 @@ interface MenuSectionProps {
   onSelectCategory: (categoryId: string) => void;
   whatsappNumber: string;
   onRecordOrder?: (item: MenuItem) => void;
+  onAddToCart?: (item: MenuItem) => void;
 }
 
 export const MenuSection: React.FC<MenuSectionProps> = ({
@@ -19,6 +20,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
   onSelectCategory,
   whatsappNumber,
   onRecordOrder,
+  onAddToCart,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dietaryFilter, setDietaryFilter] = useState<'all' | 'veg' | 'non-veg' | 'beverage'>('all');
@@ -261,22 +263,29 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
                     </div>
 
                     {/* Card Footer */}
-                    <div className="pt-3 border-t border-[#F5EDE1] flex items-center justify-between">
-                      <span className="text-[11px] text-stone-500 font-medium flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        Made to order
-                      </span>
+                    <div className="pt-3 border-t border-[#F5EDE1] flex items-center justify-between gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onAddToCart) onAddToCart(item);
+                        }}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-[#1C140E] bg-[#C89D5C] hover:bg-[#b58c4f] transition-all shadow-2xs cursor-pointer"
+                        title="Add to website order bag"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Order Online</span>
+                      </button>
 
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleWhatsAppOrder(item);
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 shadow-2xs"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 shadow-2xs cursor-pointer"
                         title="Order via WhatsApp"
                       >
                         <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Order</span>
+                        <span className="hidden sm:inline">WhatsApp</span>
                       </button>
                     </div>
                   </div>
@@ -357,21 +366,34 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
                 </div>
 
                 {/* Order Actions */}
-                <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                <div className="pt-2 flex flex-col gap-2.5">
                   <button
-                    onClick={() => handleWhatsAppOrder(activeModalItem)}
-                    className="flex-1 py-3.5 px-5 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all"
+                    onClick={() => {
+                      if (onAddToCart) onAddToCart(activeModalItem);
+                      setActiveModalItem(null);
+                    }}
+                    className="w-full py-3.5 px-5 rounded-2xl bg-[#C89D5C] hover:bg-[#b58c4f] text-[#1C140E] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
                   >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Order on WhatsApp</span>
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Add to Website Order Bag (रू {activeModalItem.price})</span>
                   </button>
 
-                  <a
-                    href={`tel:${whatsappNumber}`}
-                    className="py-3.5 px-6 rounded-2xl bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] font-semibold text-xs uppercase tracking-wider text-center transition-all shadow-md"
-                  >
-                    Call Cafe
-                  </a>
+                  <div className="flex flex-col sm:flex-row gap-2.5">
+                    <button
+                      onClick={() => handleWhatsAppOrder(activeModalItem)}
+                      className="flex-1 py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Order on WhatsApp</span>
+                    </button>
+
+                    <a
+                      href={`tel:${whatsappNumber}`}
+                      className="py-3 px-5 rounded-xl bg-[#2A1810] hover:bg-[#3D2314] text-[#FAF7F2] font-semibold text-xs uppercase tracking-wider text-center transition-all shadow-xs"
+                    >
+                      Call Cafe
+                    </a>
+                  </div>
                 </div>
               </div>
             </motion.div>
