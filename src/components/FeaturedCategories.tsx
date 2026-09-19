@@ -11,33 +11,32 @@ interface FeaturedCategoriesProps {
 export const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({
   onSelectCategory,
 }) => {
-  // Exactly 4 visual category blocks as specified:
-  // Coffee & Tea, Food, Drinks, Snacks
+  // Featured specialties
   const visualCategories = [
     {
       id: 'feat-cold-coffee-american',
-      categoryId: 'cat-cold-coffee',
+      categoryId: 'cat-cold-coffe',
       name: 'American',
       subtitle: 'Crisp & Invigorating · रू 175',
       image_url: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80',
     },
     {
       id: 'feat-cold-coffee-lutte',
-      categoryId: 'cat-cold-coffee',
+      categoryId: 'cat-cold-coffe',
       name: 'Lutte',
       subtitle: 'Velvety Layered Iced Latte · रू 195',
       image_url: 'https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=800&q=80',
     },
     {
       id: 'feat-cold-coffee-honey-lemon',
-      categoryId: 'cat-cold-coffee',
+      categoryId: 'cat-cold-coffe',
       name: 'Americano honey Lemon',
       subtitle: 'Citrus & Himalayan Honey · रू 245',
       image_url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80',
     },
     {
       id: 'feat-cold-coffee-mocha',
-      categoryId: 'cat-cold-coffee',
+      categoryId: 'cat-cold-coffe',
       name: 'Mocha',
       subtitle: 'Decadent Dark Chocolate · रू 215',
       image_url: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=800&q=80',

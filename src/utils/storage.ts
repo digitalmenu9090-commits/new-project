@@ -12,9 +12,9 @@ import {
 } from '../data/initialData';
 
 const STORAGE_KEYS = {
-  MENU_ITEMS: 'sip_cafe_cold_coffee_items_v12',
-  CATEGORIES: 'sip_cafe_cold_coffee_categories_v12',
-  SETTINGS: 'sip_cafe_cold_coffee_settings_v12',
+  MENU_ITEMS: 'sip_cafe_menu_official_full_v1',
+  CATEGORIES: 'sip_cafe_categories_official_full_v1',
+  SETTINGS: 'sip_cafe_settings_official_full_v1',
   GALLERY: 'sip_cafe_cold_coffee_gallery_v12',
   ORDERS: 'sip_cafe_admin_orders_v1',
   CUSTOMERS: 'sip_cafe_admin_customers_v1',

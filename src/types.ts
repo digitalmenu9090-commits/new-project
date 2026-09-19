@@ -67,6 +67,7 @@ export interface Order {
   customerPhone: string;
   orderType: 'Dine-In' | 'Takeaway' | 'Delivery' | string;
   tableNumber?: string;
+  deliveryAddress?: string;
   items: OrderItem[];
   subtotal: number;
   discount: number;
@@ -119,6 +120,8 @@ export interface AdminProfile {
   email: string;
   role: string;
   phone: string;
+  avatarUrl?: string;
+  permissions?: string[];
 }
 
 export type AdminViewTab =

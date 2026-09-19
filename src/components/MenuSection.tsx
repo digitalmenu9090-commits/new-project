@@ -73,10 +73,10 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
             <span>Official Himalayan Menu</span>
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-[#1C1917] tracking-tight mb-3">
-            Our Cold Coffee Menu
+            Our Official Cafe Menu
           </h2>
           <p className="text-[#57534E] text-base sm:text-lg font-light italic">
-            "Chilled Himalayan brews, handcrafted iced lattes, and refreshing cold coffee specialties."
+            "Brewed in the Himalayas, Made for You. Coffee • Food • Good Vibes"
           </p>
         </div>
 
