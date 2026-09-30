@@ -46,6 +46,7 @@ import { WebsiteOrderModal, CartItem } from './components/WebsiteOrderModal';
 import { FloatingOrderBag } from './components/FloatingOrderBag';
 import { playNewOrderSound } from './utils/sound';
 import { ShieldCheck, ArrowRight } from 'lucide-react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -486,6 +487,9 @@ export default function App() {
           onClose={() => setIsLoginModalOpen(false)}
           onLoginSuccess={handleLoginSuccess}
         />
+
+        {/* Vercel Speed Insights */}
+        <SpeedInsights />
       </div>
     </ErrorBoundary>
   );
