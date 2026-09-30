@@ -46,6 +46,7 @@ import { WebsiteOrderModal, CartItem } from './components/WebsiteOrderModal';
 import { FloatingOrderBag } from './components/FloatingOrderBag';
 import { playNewOrderSound } from './utils/sound';
 import { ShieldCheck, ArrowRight } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -487,6 +488,7 @@ export default function App() {
           onLoginSuccess={handleLoginSuccess}
         />
       </div>
+      <Analytics />
     </ErrorBoundary>
   );
 }
